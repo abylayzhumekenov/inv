@@ -1,0 +1,39 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: mpic++ build active file",
+			"command": "/usr/bin/mpicc",
+			"args": [
+				"-g",
+				"${file}",
+				"-o",
+				"${fileDirname}/${fileBasenameNoExtension}",
+				"-I${env:PETSC_DIR}/include",
+				"-I${env:PETSC_DIR}/${env:PETSC_ARCH}/include",
+				"-L${env:PETSC_DIR}/${env:PETSC_ARCH}/lib",
+				"-lpetsc",
+                "-I/usr/lib/x86_64-linux-gnu/openmpi/include/",
+				"-L/usr/lib/x86_64-linux-gnu/openmpi/lib",
+				"-lmpi",
+				"-I/home/abylay/KAUST/Libraries/C/metis/include",
+				"-L/home/abylay/KAUST/Libraries/C/metis/lib",
+				"-lmetis",
+				"-llapack",
+				"-lm"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: /usr/bin/g++"
+		}
+	]
+}
