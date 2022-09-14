@@ -4,7 +4,7 @@
 #include <pcg_variants.h>
 #include <petsc.h>
 #include <petscblaslapack.h> 
-#include "/home/abylay/KAUST/Libraries/C/petsc/src/ksp/ksp/impls/gmres/gmresimpl.h"
+#include <gmresimpl.h>
 
 #include "inv_sampler.h"
 #include "inv_random.h"

@@ -9,10 +9,9 @@ EXE = main
 SRCS = $(wildcard $(SRC)/*.c)
 OBJS = $(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
-# PCG_DIR = /home/abylay/KAUST/Libraries/C/pcg-c-0.94
-# METIS_DIR = /home/abylay/KAUST/Libraries/C/metis
+GMRES_DIR = $(PETSC_DIR)/src/ksp/ksp/impls/gmres/
 
-CFLAGS = -g -Wall -I$(INC) -I$(PETSC_DIR)/include -I$(PETSC_DIR)$(PETSC_ARCH)/include -I$(PCG_DIR)/include -I$(METIS_DIR)/include
+CFLAGS = -g -Wall -I$(INC) -I$(PETSC_DIR)/include -I$(PETSC_DIR)$(PETSC_ARCH)/include -I$(GMRES_DIR) -I$(PCG_DIR)/include -I$(METIS_DIR)/include
 LIBS_PATH = -L$(PETSC_DIR)$(PETSC_ARCH)/lib -L$(PCG_DIR)/src -L$(METIS_DIR)/lib
 LIBS = -lm -lpetsc -llapack -lpcg_random -lmetis
 
@@ -22,3 +21,7 @@ all: $(OBJS)
 $(OBJS): $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) $(CFLAGS) -c $? -o $@
 
+.PHONY: clean
+
+clean: all $(OBJS)
+	rm -f $(OBJS)

@@ -7,6 +7,7 @@
                 "${workspaceFolder}/**",
                 "${env:PETSC_DIR}/**",
                 "/home/abylay/KAUST/Libraries/C/pcg-c-0.94/**",
+                "/home/abylay/KAUST/Libraries/C/petsc/src/ksp/ksp/impls/gmres/",
                 "/usr/lib/x86_64-linux-gnu/openmpi/include/"
             ],
             "defines": [],
