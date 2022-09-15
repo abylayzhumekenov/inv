@@ -5,6 +5,7 @@
 #include <petsc.h>
 #include <petscblaslapack.h> 
 #include <gmresimpl.h>
+#include <sbaij.h>
 
 #include "inv_sampler.h"
 #include "inv_random.h"
@@ -24,6 +25,7 @@ KSP sampler_ksp(MPI_Comm comm, Mat Q, int max_niter, int verbose){
     KSPGetPC(ksp, &pc);
     PCSetType(pc, PCICC);  // Later fix to some parallel preconditioner
     PCSetFromOptions(pc);
+    PCSetUp(pc);
     KSPSetPCSide(ksp, PC_SYMMETRIC);
     KSPSetTolerances(ksp, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, max_niter);
     KSPSetComputeEigenvalues(ksp, PETSC_TRUE);
@@ -39,113 +41,136 @@ KSP sampler_ksp(MPI_Comm comm, Mat Q, int max_niter, int verbose){
 }
 
 
-Vec* sampler_gmrf(KSP ksp, Vec* z, int n_samples, int verbose, int verbose_sampler){
+Vec sampler_std_normal(MPI_Comm comm, pcg64_random_t* rng, int n, int verbose, int k){
 
-    /* Allocate space for x */
-    if(verbose) printf("%sAllocating memory..\n", INV_SAMPLER_VERBOSE);
-    Vec* x = (Vec*)malloc(n_samples * sizeof(Vec));    // Do it another way?
-
-    for(int k=0; k<n_samples; k++){
-
-        if(verbose && verbose_sampler) printf("%sSample #%i..\n", INV_SAMPLER_VERBOSE, k);
-
-        /* Solve a system */
-        if(verbose && verbose_sampler) printf("%sSolving a system..\n", INV_SAMPLER_VERBOSE);
-        int niter, max_niter;
-        Vec y;
-        VecDuplicate(z[0], &y);
-        VecDuplicate(z[k], &x[k]);
-        KSPSolve(ksp, z[k], y);
-        KSPGetIterationNumber(ksp, &niter);
-        KSP_GMRES* gmres = (KSP_GMRES*)ksp->data;
-        max_niter = gmres->max_k;
-        if(verbose && verbose_sampler) printf("%sSolved in %i iterations.\n", INV_SAMPLER_VERBOSE, niter);
-
-        /* Get Krylov vectors and the Hessenberg matrix */
-        if(verbose && verbose_sampler) printf("%sCopying GMRES data..\n", INV_SAMPLER_VERBOSE);
-        Vec* v = gmres->vecs + 2;
-        double eig_diag[niter], eig_offdiag[niter-1];
-        for(int i=0; i<niter; i++){
-            eig_diag[i] = gmres->hes_origin[(max_niter+1)*i+i];
-            if(i<niter-1) eig_offdiag[i] = gmres->hes_origin[(max_niter+1)*i+i+1];
-        }
-
-        /* Eigendecomposition of the Hessenberg matrix */
-        if(verbose && verbose_sampler) printf("%sEigendecomposition..\n", INV_SAMPLER_VERBOSE);
-        const char eig_v = 'I';
-        int eig_n = niter, eig_info;
-        double eig_work[5*niter];
-        double* eig_vectors = (double*)malloc(niter*niter * sizeof(double));
-        dsteqr_(&eig_v, &eig_n, eig_diag, eig_offdiag, eig_vectors, &eig_n, eig_work, &eig_info);
-        if(verbose && verbose_sampler) printf("%sEigensolve finished.\n", INV_SAMPLER_VERBOSE);
-
-        /* Compute right term of x = V U D^-1/2 U^T (beta e_1) = V * udube, that is, of 'udube'     }:8)     */
-        if(verbose && verbose_sampler) printf("%sComputing weights..\n", INV_SAMPLER_VERBOSE);
-        double beta0 = gmres->rnorm0;
-        double udube[niter];
-        for(int i=0; i<niter; i++){
-            udube[i] = 0;
-            for(int j=0; j<niter; j++){
-                udube[i] += beta0 / sqrt(eig_diag[j]) * eig_vectors[j*niter] * eig_vectors[j*niter+i];
-            }
-        }
-
-        /* Compute the sample x = V * udube */
-        if(verbose && verbose_sampler) printf("%sAssembling a sample..\n", INV_SAMPLER_VERBOSE);
-        VecSet(x[k], 0.0);
-        VecAssemblyBegin(x[k]);
-        VecAssemblyEnd(x[k]);
-        VecMAXPY(x[k], niter, udube, v);
-
-        /* Clean up */
-        VecDestroy(&y);
-        free(eig_vectors);
-        if(verbose && verbose_sampler) printf("%sSample #%i finished.\n", INV_SAMPLER_VERBOSE, k);
+    /* Generate random numbers in parallel */
+    if(verbose) printf("%sSample #%i..\n", INV_SAMPLER_VERBOSE, k);
+    if(verbose) printf("%sSampling standard normal..\n", INV_SAMPLER_VERBOSE);
+    Vec z;
+    int Istart, Iend;
+    VecCreate(comm, &z);
+    VecSetType(z, VECMPI);
+    VecSetSizes(z, PETSC_DECIDE, n);
+    VecSetFromOptions(z);
+    VecSetUp(z);
+    VecGetOwnershipRange(z, &Istart, &Iend);
+    for(int j=Istart; j<Iend; j++){
+        VecSetValue(z, j, random_std_normal(rng), INSERT_VALUES);
     }
+    VecAssemblyBegin(z);
+    VecAssemblyEnd(z);
 
-    if(verbose) printf("%sSuccessfully finished.\n", INV_SAMPLER_VERBOSE);
-
-    return x;
+    return z;
 }
 
 
-Vec* sampler_std_normal(MPI_Comm comm, int n, int n_samples, int verbose){
+Vec sampler_premultiply_z(KSP ksp, Vec z, int verbose){
 
-    /* Create a pseudo-random number generator */
-    if(verbose) printf("%sSetting seed..\n", INV_SAMPLER_VERBOSE);
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    pcg64_random_t rng;
-    pcg64_srandom_r(&rng, time(NULL), 0);   // need different seeds
-    // pcg64_srandom_r(&rng, time(NULL), (intptr_t)rng);  // no need to set different seeds for different processes?
+    /* 
+    ICC is stored as M = D^-2 + U
+    where D = diag(L)
+    and U = D^-1 (-L^T + D)
+    thus, L = (I - U^T) D
 
-    // std::random_device sample_rd{};
-    // std::mt19937 sample_gen{sample_rd()};
-    // sample_gen.seed(time(0) * (rank + 1));    // use different seed for different processes, otherwise they produce the same numbers
-    // std::normal_distribution<> sample_d{0,1};
+    Note: D is at the end of array
 
-    /* Generate random numbers in parallel */
-    if(verbose) printf("%sAllocating memory..\n", INV_SAMPLER_VERBOSE);
-    Vec* z = (Vec*)malloc(n_samples * sizeof(Vec));
-    int Istart, Iend;
-    VecCreate(comm, &z[0]);
-    VecSetType(z[0], VECMPI);
-    VecSetSizes(z[0], PETSC_DECIDE, n);
-    VecSetFromOptions(z[0]);
-    VecSetUp(z[0]);
-    VecGetOwnershipRange(z[0], &Istart, &Iend);
-    // VecDuplicateVecs(z[0], n_samples-1, &z);
+    ->mbs = int (or n) (number of rows/columns)
+    ->nz = int (or nz) (number of nonzeros)
+    ->a = double* of size nz (stores values)
+    ->i = int* of size n+1 (stores ranges of each row)
+    ->j = int* of size nz (stores column indices, diagonals at the end)
+    ->diag = int* of size n (stores indices to diagonals in array j, e.g. j[diag])      */
 
-    if(verbose) printf("%sGenerating standard normal..\n", INV_SAMPLER_VERBOSE);
-    for(int i=0; i<n_samples; i++){
-        if(i) VecDuplicate(z[0], &z[i]);
-        for(int j=Istart; j<Iend; j++){
-            VecSetValue(z[i], j, random_std_normal(&rng), INSERT_VALUES);
-            // VecSetValue(z[i], j, sample_d(sample_gen), INSERT_VALUES);
-        }
-        VecAssemblyBegin(z[i]);
-        VecAssemblyEnd(z[i]);
+    if(verbose) printf("%sPrepmultiplying standard normal..\n", INV_SAMPLER_VERBOSE);
+    Mat L;
+    PC pc;
+    KSPGetPC(ksp, &pc);
+    PCFactorGetMatrix(pc, &L);
+    Mat_SeqSBAIJ *LL = (Mat_SeqSBAIJ*)L->data;
+    double *z_array, zz_array[LL->mbs];
+    VecGetArray(z, &z_array);
+
+    for(int i=0; i<LL->mbs; i++){
+        zz_array[i] = z_array[i] / sqrt(LL->a[LL->diag[i]]);
+        z_array[i] = zz_array[i];
     }
+    for(int i=0; i<LL->mbs; i++){
+        for(int j=LL->i[i]; j<LL->i[i+1]-1; j++){
+            z_array[LL->j[j]] -= LL->a[j] * zz_array[i];
+        }
+    }
+    VecRestoreArray(z, &z_array);
+    if(verbose) printf("%sPrepmultiplying done.\n", INV_SAMPLER_VERBOSE);
 
     return z;
+}
+
+
+Vec sampler_gmrf(KSP ksp, Vec z, int verbose, int k){
+
+    if(verbose) printf("%sSampling GMRF..\n", INV_SAMPLER_VERBOSE);
+
+    /* Solve a system */
+    if(verbose) printf("%sSolving a system..\n", INV_SAMPLER_VERBOSE);
+    int niter, max_niter;
+    Vec x, xx, y;
+    VecDuplicate(z, &y);
+    VecDuplicate(z, &x);
+    VecDuplicate(z, &xx);
+    VecSet(x, 0.0);
+    VecAssemblyBegin(x);
+    VecAssemblyEnd(x);
+    z = sampler_premultiply_z(ksp, z, verbose);
+    KSPSolve(ksp, z, y);
+    KSPGetIterationNumber(ksp, &niter);
+    KSP_GMRES* gmres = (KSP_GMRES*)ksp->data;
+    max_niter = gmres->max_k;
+    if(verbose) printf("%sSolved in %i iterations.\n", INV_SAMPLER_VERBOSE, niter);
+
+    /* Get Krylov vectors and the Hessenberg matrix */
+    if(verbose) printf("%sCopying GMRES data..\n", INV_SAMPLER_VERBOSE);
+    Vec* v = gmres->vecs + 2;
+    double eig_diag[niter], eig_offdiag[niter-1];
+    for(int i=0; i<niter; i++){
+        eig_diag[i] = gmres->hes_origin[(max_niter+1)*i+i];
+        if(i<niter-1) eig_offdiag[i] = gmres->hes_origin[(max_niter+1)*i+i+1];
+    }
+
+    /* Eigendecomposition of the Hessenberg matrix */
+    if(verbose) printf("%sEigendecomposition..\n", INV_SAMPLER_VERBOSE);
+    const char eig_v = 'I';
+    int eig_n = niter, eig_info;
+    double eig_work[5*niter];
+    double* eig_vectors = (double*)malloc(niter*niter * sizeof(double));
+    dsteqr_(&eig_v, &eig_n, eig_diag, eig_offdiag, eig_vectors, &eig_n, eig_work, &eig_info);
+    if(verbose) printf("%sEigensolve finished.\n", INV_SAMPLER_VERBOSE);
+
+    /* Compute right term of x = V U D^-1/2 U^T (beta e_1) = V * udube, that is, of 'udube'     }:8)     */
+    if(verbose) printf("%sComputing weights..\n", INV_SAMPLER_VERBOSE);
+    double beta0 = gmres->rnorm0;
+    double udube[niter];
+    for(int i=0; i<niter; i++){
+        udube[i] = 0;
+        for(int j=0; j<niter; j++){
+            udube[i] += beta0 / sqrt(eig_diag[j]) * eig_vectors[j*niter] * eig_vectors[j*niter+i];
+        }
+    }
+
+    /* Compute the sample x = V * udube */
+    if(verbose) printf("%sAssembling a sample..\n", INV_SAMPLER_VERBOSE);
+    VecMAXPY(x, niter, udube, v);
+
+    /* Unwind the preconditioner x = L^-T * V */
+    if(verbose) printf("%sUnwinding preconditioner..\n", INV_SAMPLER_VERBOSE);
+    PC pc;
+    KSPGetPC(ksp, &pc);
+    PCApplySymmetricRight(pc, x, xx);
+
+    /* Clean up */
+    VecDestroy(&y);
+    VecDestroy(&x);
+    free(eig_vectors);
+    if(verbose) printf("%sSample #%i finished.\n", INV_SAMPLER_VERBOSE, k);
+
+    return xx;
 }

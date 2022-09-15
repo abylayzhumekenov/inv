@@ -30,7 +30,7 @@ KSP solver_ksp(MPI_Comm comm, Mat Q, int max_niter, int verbose);
  * @param verbose 
  * @return Vec 
  */
-Vec solver_sample_contribution(KSP ksp, Mat Q, Vec* x, IS is_x, IS is_a, int n_samples, int verbose);
+Vec solver_sample_contribution(KSP ksp, Mat Q, Vec x, IS is_x, IS is_a, int verbose);
 
 
 /**

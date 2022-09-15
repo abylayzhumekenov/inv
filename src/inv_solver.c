@@ -29,28 +29,24 @@ KSP solver_ksp(MPI_Comm comm, Mat Q, int max_niter, int verbose){
 }
 
 
-Vec solver_sample_contribution(KSP ksp, Mat Q, Vec* x, IS is_x, IS is_a, int n_samples, int verbose){
+Vec solver_sample_contribution(KSP ksp, Mat Q, Vec x, IS is_x, IS is_a, int verbose){
 
     if(verbose) printf("%sComputing the sample contribution..\n", INV_SOLVER_VERBOSE);
-    Vec d, y[n_samples], w[n_samples];
-    VecGetSubVector(x[0], is_a, &d);
-    for(int k=0; k<n_samples; k++){
+    Vec y, w;
+    
+    /* Compute Q[a,s] %*% x[s] */
+    VecISSet(x, is_x, 0.0);
+    VecDuplicate(x, &y);
+    MatMult(Q, x, y);
+    VecGetSubVector(y, is_a, &y);
+    VecDuplicate(y, &w);
 
-        /* Compute Q[a,s] %*% x[s] */
-        VecISSet(x[k], is_x, 0.0);
-        VecDuplicate(x[k], &y[k]);
-        MatMult(Q, x[k], y[k]);
-        VecGetSubVector(y[k], is_a, &y[k]);
-        VecDuplicate(y[k], &w[k]);
-
-        /* Solve with Q[a,a] and square */
-        KSPSolve(ksp, y[k], w[k]);
-        VecPointwiseMult(w[k], w[k], w[k]);
-        VecAXPY(d, 1.0/n_samples, w[k]);
-    }
+    /* Solve with Q[a,a] and square */
+    KSPSolve(ksp, y, w);
+    VecPointwiseMult(w, w, w);
     if(verbose) printf("%sSample contribution computed.\n", INV_SOLVER_VERBOSE);
 
-    return d;
+    return w;
 }
 
 
