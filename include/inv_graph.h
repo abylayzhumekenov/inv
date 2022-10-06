@@ -1,115 +1,93 @@
 #ifndef INV_GRAPH_H
 #define INV_GRAPH_H
 
-#include "inv_input.h"
-
 
 /**
- * @brief A struct storing a graph
+ * @brief A graph structure
  * 
  */
-typedef struct Graph {
+typedef struct InvGraph {
     int n_vert;
     int n_edge;
-    int sep_size;
-    int sep_index;
+    int n_part;
     int* xadj;
     int* yadj;
     int* part;
     int* vert;
-} Graph;
+} InvGraph;
 
 
 /**
- * @brief A constructor for Graph
+ * @brief Create a graph
  * 
  * @param n_vert 
  * @param n_edge 
- * @return Graph* 
- */
-Graph* graph_create(int n_vert, int n_edge);
-
-
-/**
- * @brief Create a graph from a CSR input
- * 
- * @param input 
  * @param verbose 
- * @return Graph* 
+ * @return InvGraph* 
  */
-Graph* graph_create_from_input(InputCSR* input, int verbose);
+InvGraph* InvGraphCreate(int n_vert, int n_edge, int verbose);
 
 
 /**
- * @brief Create a RW2 graph of size n
+ * @brief Create a graph from an input file in a MatrixMarket format
  * 
- * @param n 
+ * @param filename 
  * @param verbose 
- * @return Graph* 
+ * @return InvGraph* 
  */
-Graph* graph_create_rw2(int n, int verbose);
+InvGraph* InvGraphCreateFromFile(char* filename, int verbose);
 
 
 /**
- * @brief A destructor for Graph
+ * @brief Create a graph for a RW2 model
+ * 
+ * @param n_vert 
+ * @param cyclic 
+ * @param verbose 
+ * @return InvGraph* 
+ */
+InvGraph* InvGraphCreateRW2(int n_vert, int cyclic, int verbose);
+
+
+/**
+ * @brief Destroy a graph
  * 
  * @param graph 
+ * @param verbose 
  */
-void graph_destroy(Graph* graph);
+void InvGraphDestroy(InvGraph* graph, int verbose);
 
 
 /**
  * @brief Print a graph
  * 
  * @param graph 
- * @param vert 
- * @param adj 
- * @param part 
- */
-void graph_print(Graph* graph, int vert, int adj, int part);
-
-
-/**
- * @brief Separate a graph
- * 
- * @param graph 
  * @param verbose 
- * @return Graph* 
  */
-Graph* graph_separate(Graph* graph, int verbose);
+void InvGraphPrint(InvGraph* graph, int verbose);
 
 
 /**
  * @brief Partition a graph into several parts
  * 
  * @param graph 
- * @param n_parts 
+ * @param n_part 
  * @param verbose 
- * @return Graph* 
+ * @return InvGraph* 
  */
-Graph* graph_partition(Graph* graph, int n_parts, int verbose);
+InvGraph* InvGraphPartition(InvGraph* graph, int n_part, int verbose);
 
 
 /**
- * @brief Create a subgraph
+ * @brief Compute a neighborhood of a graph partition
  * 
  * @param graph 
- * @param idx_part 
- * @return Graph* 
- */
-Graph* graph_subgraph(Graph* graph, int idx_part);
-
-
-/**
- * @brief Compute the graph and its neighboring nodes
- * 
- * @param graph 
- * @param idx_part 
- * @param order 
+ * @param i_part 
+ * @param n_neighbor 
  * @param verbose 
- * @return Graph* 
+ * @return InvGraph* 
  */
-Graph* graph_neighborhood(Graph* graph, int idx_part, int order, int verbose);
+InvGraph* InvGraphNeighborhood(InvGraph* graph, int i_part, int n_neighbor, int verbose);
 
 
 #endif

@@ -1,26 +1,22 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
+#include <string.h>
 
-#include <pcg_variants.h>
 #include <petsc.h>
-#include <metis.h>
-#include <sbaij.h>
+#include <mpi.h>
 
-#include "inv_sampler.h"
-#include "inv_random.h"
-#include "inv_input.h"
-#include "inv_matrix.h"
-#include "inv_graph.h"
 #include "inv_is.h"
+#include "inv_graph.h"
+#include "inv_matrix.h"
+#include "inv_sampler.h"
 #include "inv_solver.h"
 
 
-int main(int argc, char** argv){
+int main(int argc, char **argv){
 
     /* Set parameters from the options */
     char *filein = "Qmm", fileout[256];
-    int max_niter = 1000, n_samples = 1000, n_neighbors = 2, verbose = 0;
+    int max_niter = 1000, n_sample = 1000, n_neighbor = 1, verbose = 0, verbose_s = 0, n_part = 1;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-fin")){
             char filetemp[128];
@@ -29,150 +25,116 @@ int main(int argc, char** argv){
             strcpy(fileout, "data/x_");
             strcat(fileout, argv[i+1]);
         } else if(!strcmp(argv[i], "-ns")){
-            n_samples = atoi(argv[i+1]);
+            n_sample = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-nmax")){
             max_niter = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-nn")){
-            n_neighbors = atoi(argv[i+1]);
+            n_neighbor = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-v")){
             verbose = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-vs")){
+            verbose_s = atoi(argv[i+1]);
         }
         argv[i] = 0;
     }
-    
 
-    // ----------------------------------------------------------------------
-
-    /* Declare variables */
-    int n, n_a;
-    Vec x, z, d, d_sample, d_base, v;
-    Mat Q, Q_a;
-    KSP ksp_sampler, ksp_solver;
-    IS is_part, is_x, is_a, is_as, is_s;
-    PetscViewer viewer;
 
     /* Initialize MPI */
-    MPI_Init(NULL, NULL);
+    int rank, size;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    verbose = (!rank) && verbose, n_part = size;
 
-    /* Create communicators */
-    int world_size, world_rank;
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    verbose = verbose && !world_rank;
 
     /* Initialize PETSc */
-    PETSC_COMM_WORLD = MPI_COMM_WORLD;
     PetscInitialize(&argc, &argv, (char*)0, (char*)0);
+    MPI_Comm comm = PETSC_COMM_WORLD;
+    PetscViewer viewer = PETSC_VIEWER_STDOUT_WORLD;
 
-    // ----------------------------------------------------------------------
-    
-    /* Read the input file */
-    InputCSR* input = input_read(filein, verbose);
 
-    /* Create a sequential graph */
-    // Graph* graph = graph_create_rw2(10, verbose);
-    Graph* graph = graph_create_from_input(input, verbose);
+    /* Read a graph */
+    InvGraph* graph = InvGraphCreateFromFile(filein, verbose);
+    graph = InvGraphPartition(graph, n_part, verbose);
 
-    /* Separate the graph recursively OR perform k-way partitioning */
-    /* Then no need to treat separator differently, and all ranks are balanced. */
-    // graph = graph_separate(graph, verbose);
-    graph = graph_partition(graph, world_size, verbose);
-    is_part = is_create_from_partition(PETSC_COMM_SELF, graph, world_rank, verbose);
 
-    // ----------------------------------------------------------------------
+    /* Create a mappings */
+    InvIS* itog = InvISCreateInitialToGlobal(graph, verbose);
+    InvIS* gtoi = InvISCreateGlobalToInitial(graph, verbose);
 
-    /* Create a sequential matrix */
-    // Q = matrix_create_rw2(PETSC_COMM_SELF, 10, 1.0, 1e-4, verbose);
-    Q = matrix_create_from_input(PETSC_COMM_SELF, input, verbose);
-    MatGetSize(Q, &n, &n);
-    ISCreateStride(PETSC_COMM_SELF, n, 0, 1, &is_x);
 
-    /* Create a submatrix Q[a,a] */
-    graph = graph_neighborhood(graph, world_rank, n_neighbors, verbose);
-    is_a = is_create_from_partition(PETSC_COMM_SELF, graph, world_rank, verbose);
-    Q_a = matrix_create_submatrix(Q, is_a, verbose);
+    /* Read a matrix */
+    Mat Q = InvMatrixCreateFromFile(comm, filein, itog, verbose);
 
-    /* Grow once more to include enclosing separator and create a submatrix Q[as,as] */
-    graph = graph_neighborhood(graph, world_rank, 1, verbose);
-    is_as = is_create_from_partition(PETSC_COMM_SELF, graph, world_rank, verbose);
-    ISDifference(is_as, is_a, &is_s);
-    ISDifference(is_x, is_s, &is_x);
 
-    // ----------------------------------------------------------------------
+    /* Compute halo regions */
+    graph = InvGraphNeighborhood(graph, rank, n_neighbor, verbose);
+    InvIS* itol = InvISCreateInitialToLocal(graph, verbose);
+    InvIS* ltoi = InvISCreateLocalToInitial(graph, rank, verbose);
+    graph = InvGraphNeighborhood(graph, rank, 1, verbose);
+    InvIS* itol2 = InvISCreateInitialToLocal(graph, verbose);
+    InvIS* ltoi2 = InvISCreateLocalToInitial(graph, rank, verbose);
 
-    /* Prepare KSP solvers and vectors */
-    ksp_sampler = sampler_ksp(PETSC_COMM_SELF, Q, max_niter, verbose);
-    ksp_solver = solver_ksp(PETSC_COMM_SELF, Q_a, max_niter, verbose);
-    ISGetSize(is_a, &n_a);
-    VecCreate(PETSC_COMM_SELF, &d);
-    VecSetType(d, VECSEQ);
-    VecSetSizes(d, PETSC_DECIDE, n_a);
-    VecSetFromOptions(d);
-    VecSetUp(d);
-    VecSet(d, 0.0);
 
-    /* Create a random number generator */
-    pcg64_random_t rng;
-    pcg64_srandom_r(&rng, time(NULL), 0);
-    // pcg64_srandom_r(&rng, time(NULL), (intptr_t)&rng);  // completely unpredictable seeds
+    /* Read ghost matrices */
+    Mat Q_local = InvMatrixCreateLocalFromFile(comm, filein, itol2, verbose);
+    Mat Q_sub = InvMatrixCreateLocalSubmatrix(comm, Q_local, itol2, itol, verbose);
 
-    /* Compute the variance term */
-    for(int k=0; k<n_samples; k++){
 
-        /* Sample */
-        /* For now, only a sequential sampler works. */
-        /* Need a parallel symmetric preconditioner for parallel sampling. */
-        z = sampler_std_normal(PETSC_COMM_SELF, &rng, n, verbose, k);
-        x = sampler_gmrf(ksp_sampler, z, verbose, k);
+    /* Solve the base case */
+    Mat L = InvMatrixFactorLocal(Q_sub, verbose);
+    Vec d = InvSolverBaseCase(L, verbose);
 
-        /* Compute the sample contribution */
-        d_sample = solver_sample_contribution(ksp_solver, Q, x, is_x, is_a, verbose);
-        VecAXPY(d, 1.0 / n_samples, d_sample);
+
+    /* Create a sampler KSP */
+    pcg64_random_t rng = InvRandomCreate(0, 0, 0);
+    KSP ksp_sampler = InvSamplerCreateKSP(comm, Q, max_niter, verbose);
+    Vec z, x, y, w, v;
+
+
+    /* Combine samples and direct solution */
+    for(int i=0; i<n_sample; i++){
+        if(verbose && verbose_s) printf("SAMPLER:\tSample #%i\n", i);
+        z = InvSamplerStdNormal(comm, &rng, itog, verbose && verbose_s);
+        x = InvSamplerGMRF(ksp_sampler, z, verbose && verbose_s);
+        y = InvSolverMultQx(comm, Q_local, x, itol2, itol, itog, verbose && verbose_s);
+        w = InvSolverSampleSq(L, y, verbose && verbose_s);
+        VecAXPY(d, 1.0/n_sample, w);
     }
 
-    /* Solve the base case Q[a,a]^-1 and add */
-    d_base = solver_base_case(PETSC_COMM_SELF, Q_a, verbose);
-    VecAXPY(d, 1.0, d_base);
 
     /* Assemble the solution */
-    v = solver_assemble_solution(d, is_part, is_a, n, verbose);
+    v = InvSolverAssembleSolution(comm, d, itol, itog, gtoi, verbose);
 
-    // ----------------------------------------------------------------------
 
-    /* Output */
-    PetscViewerBinaryOpen(PETSC_COMM_WORLD, fileout, FILE_MODE_WRITE, &viewer);
+    /* Write the solution */
+    PetscViewerBinaryOpen(comm, fileout, FILE_MODE_WRITE, &viewer);
     VecView(v, viewer);
 
-    // ----------------------------------------------------------------------
 
-    /* Free objects */
-    input_destroy(input);
-    graph_destroy(graph);
-
-    /* Free PETSc objects */
+    /* Clean up */
     VecDestroy(&z);
     VecDestroy(&x);
-    VecDestroy(&d);
-    VecDestroy(&d_sample);
-    VecDestroy(&d_base);
+    VecDestroy(&y);
+    VecDestroy(&w);
     VecDestroy(&v);
     MatDestroy(&Q);
-    MatDestroy(&Q_a);
+    MatDestroy(&Q_local);
+    MatDestroy(&Q_sub);
+    MatDestroy(&L);
     KSPDestroy(&ksp_sampler);
-    KSPDestroy(&ksp_solver);
-    ISDestroy(&is_part);
-    ISDestroy(&is_x);
-    ISDestroy(&is_a);
-    ISDestroy(&is_as);
-    ISDestroy(&is_s);
     PetscViewerDestroy(&viewer);
+    InvGraphDestroy(graph, verbose);
+    InvISDestroy(itog, verbose);
+    InvISDestroy(gtoi, verbose);
+    InvISDestroy(itol, verbose);
+    InvISDestroy(ltoi, verbose);
+    InvISDestroy(itol2, verbose);
+    InvISDestroy(ltoi2, verbose);
 
-    // ----------------------------------------------------------------------    
 
-    /* Finalize PETSc*/
+    /* Finalize */
     PetscFinalize();
-
-    /* Finalize MPI */
     MPI_Finalize();
 
     return 0;

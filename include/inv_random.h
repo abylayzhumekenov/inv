@@ -5,12 +5,23 @@
 
 
 /**
+ * @brief Create a random number generator
+ * 
+ * @param reproducible 
+ * @param initstate 
+ * @param initseq 
+ * @return pcg64_random_t 
+ */
+pcg64_random_t InvRandomCreate(pcg128_t initstate, pcg128_t initseq, int unique);
+
+
+/**
  * @brief Generate one standard normal random number using Box-Muller transform
  * 
  * @param rng 
  * @return double 
  */
-double random_std_normal(pcg64_random_t* rng);
+double InvRandomStdNormal(pcg64_random_t* rng);
 
 
 #endif
