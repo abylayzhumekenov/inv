@@ -100,6 +100,8 @@ int main(int argc, char **argv){
         y = InvSolverMultQx(comm, Q_local, x, itol2, itol, itog, verbose && verbose_s);
         w = InvSolverSampleSq(L, y, verbose && verbose_s);
         VecAXPY(d, 1.0/n_sample, w);
+        // free z, x, y, w?
+        // or rewrite z, x, y, w...
     }
 
 
