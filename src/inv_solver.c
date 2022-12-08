@@ -111,6 +111,12 @@ Vec InvSolverMultQx(MPI_Comm comm, Mat Q, Vec x, InvIS* itol2, InvIS* itol, InvI
     MatMult(Q, x_local, y_local);
     VecGetSubVector(y_local, is_sub, &y);
 
+    VecDestroy(&xx);
+    VecDestroy(&x_local);
+    VecDestroy(&y_local);
+    ISDestroy(&is_local);
+    ISDestroy(&is_sub);
+
     return y;
 }
 
