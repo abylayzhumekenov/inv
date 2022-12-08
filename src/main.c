@@ -96,6 +96,7 @@ int main(int argc, char **argv){
     for(int i=0; i<n_sample; i++){
         if(verbose && verbose_s) printf("SAMPLER:\tSample #%i\n", i);
         if(!z) printf("\nsukaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!\n");
+        if(!x) printf("\nsukaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!\n");
         z = InvSamplerStdNormal(comm, z, &rng, itog, verbose && verbose_s);
         x = InvSamplerGMRF(ksp_sampler, x, z, verbose && verbose_s);
         y = InvSolverMultQx(comm, Q_local, x, itol2, itol, itog, verbose && verbose_s);
