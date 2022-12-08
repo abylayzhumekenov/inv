@@ -89,14 +89,14 @@ int main(int argc, char **argv){
     /* Create a sampler KSP */
     pcg64_random_t rng = InvRandomCreate(0, 0, 0);
     KSP ksp_sampler = InvSamplerCreateKSP(comm, Q, max_niter, verbose);
-    Vec z, x, y, w, v;
+    Vec z = NULL, x, y, w, v;
 
 
     /* Combine samples and direct solution */
     for(int i=0; i<n_sample; i++){
         if(verbose && verbose_s) printf("SAMPLER:\tSample #%i\n", i);
-        z = InvSamplerStdNormal(comm, &rng, itog, verbose && verbose_s);
-        x = InvSamplerGMRF(ksp_sampler, z, verbose && verbose_s);
+        z = InvSamplerStdNormal(comm, z, &rng, itog, verbose && verbose_s);
+        x = InvSamplerGMRF(ksp_sampler, x, z, verbose && verbose_s);
         y = InvSolverMultQx(comm, Q_local, x, itol2, itol, itog, verbose && verbose_s);
         w = InvSolverSampleSq(L, y, verbose && verbose_s);
         VecAXPY(d, 1.0/n_sample, w);

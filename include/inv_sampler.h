@@ -9,10 +9,10 @@
 KSP InvSamplerCreateKSP(MPI_Comm comm, Mat Q, int max_niter, int verbose);
 
 
-Vec InvSamplerStdNormal(MPI_Comm comm, pcg64_random_t* rng, InvIS* mapping, int verbose);
+Vec InvSamplerStdNormal(MPI_Comm comm, Vec z, pcg64_random_t* rng, InvIS* mapping, int verbose);
 
 
-Vec InvSamplerGMRF(KSP ksp, Vec z, int verbose);
+Vec InvSamplerGMRF(KSP ksp, Vec x, Vec z, int verbose);
 
 
 #endif

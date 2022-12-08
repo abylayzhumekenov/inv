@@ -38,20 +38,21 @@ KSP InvSamplerCreateKSP(MPI_Comm comm, Mat Q, int max_niter, int verbose){
 }
 
 
-Vec InvSamplerStdNormal(MPI_Comm comm, pcg64_random_t* rng, InvIS* mapping, int verbose){
+Vec InvSamplerStdNormal(MPI_Comm comm, Vec z, pcg64_random_t* rng, InvIS* mapping, int verbose){
 
     int rank, size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
 
     if(verbose) printf("%sSampling standard normal..\n", INV_SAMPLER_VERBOSE);
-    Vec z;
     int Istart, Iend;
-    VecCreate(comm, &z);
-    VecSetType(z, VECMPI);
-    VecSetSizes(z, mapping->n_local[rank], PETSC_DETERMINE);
-    VecSetFromOptions(z);
-    VecSetUp(z);
+    if(!z){
+        VecCreate(comm, &z);
+        VecSetType(z, VECMPI);
+        VecSetSizes(z, mapping->n_local[rank], PETSC_DETERMINE);
+        VecSetFromOptions(z);
+        VecSetUp(z);
+    }
     VecGetOwnershipRange(z, &Istart, &Iend);
     for(int j=Istart; j<Iend; j++){
         VecSetValue(z, j, InvRandomStdNormal(rng), INSERT_VALUES);
@@ -63,17 +64,17 @@ Vec InvSamplerStdNormal(MPI_Comm comm, pcg64_random_t* rng, InvIS* mapping, int 
 }
 
 
-Vec InvSamplerGMRF(KSP ksp, Vec z, int verbose){
+Vec InvSamplerGMRF(KSP ksp, Vec xx, Vec z, int verbose){
 
     if(verbose) printf("%sSampling GMRF..\n", INV_SAMPLER_VERBOSE);
 
     /* Solve a system */
     if(verbose) printf("%sSolving a system...\n", INV_SAMPLER_VERBOSE);
     int niter, max_niter;
-    Vec x, xx, y;
+    Vec x, y;
     VecDuplicate(z, &y);
     VecDuplicate(z, &x);
-    VecDuplicate(z, &xx);
+    if(!xx) VecDuplicate(z, &xx);
     VecSet(x, 0.0);
     VecAssemblyBegin(x);
     VecAssemblyEnd(x);
