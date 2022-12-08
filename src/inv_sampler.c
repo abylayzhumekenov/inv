@@ -126,7 +126,7 @@ Vec InvSamplerGMRF(KSP ksp, Vec xx, Vec z, int verbose){
     /* Clean up */
     VecDestroy(&y);
     VecDestroy(&x);
-    free(eig_vectors);
+    // free(eig_vectors);
     if(verbose) printf("%sSample computed.\n", INV_SAMPLER_VERBOSE);
 
     return xx;
