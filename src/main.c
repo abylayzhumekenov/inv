@@ -104,6 +104,8 @@ int main(int argc, char **argv){
 
         VecDestroy(&y);
         VecDestroy(&w);
+        VecDestroy(&z);
+        VecDestroy(&x);
         PetscMallocGetCurrentUsage(&log);
         if(!rank) printf("----------------- %f \n", log);
         // free z, x, y, w?
