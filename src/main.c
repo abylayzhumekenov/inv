@@ -92,6 +92,7 @@ int main(int argc, char **argv){
     Vec z = NULL, x = NULL, y, w, v;
 
 
+    double log;
     /* Combine samples and direct solution */
     for(int i=0; i<n_sample; i++){
         if(verbose && verbose_s) printf("SAMPLER:\tSample #%i\n", i);
@@ -103,6 +104,8 @@ int main(int argc, char **argv){
 
         VecDestroy(&y);
         VecDestroy(&w);
+        PetscMallocGetCurrentUsage(&log);
+        printf("----------------- %f \n", log);
         // free z, x, y, w?
         // or rewrite z, x, y, w...
     }
