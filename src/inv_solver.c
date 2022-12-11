@@ -109,11 +109,11 @@ Vec InvSolverMultQx(MPI_Comm comm, Mat Q, Vec x, InvIS* itol2, InvIS* itol, InvI
     VecSetValues(x_local, n_sub, temp_sub, zero_sub, INSERT_VALUES);
     VecDuplicate(x_local, &y_local);
     MatMult(Q, x_local, y_local);
-    VecGetSubVector(y_local, is_sub, &y);
+    VecGetSubVector(y_local, is_sub, &y);   /* Error prone... Subvector is not copied. Thus, when freeing a parent vector, its memory eventually is used by other object... leading to an overlap. */
 
     VecDestroy(&xx);
     VecDestroy(&x_local);
-    VecDestroy(&y_local);
+    // VecDestroy(&y_local);
     ISDestroy(&is_local);
     ISDestroy(&is_sub);
 

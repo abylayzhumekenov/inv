@@ -60,14 +60,12 @@ PetscErrorCode InvShellApplyTranspose(PC pc, Vec x, Vec y){
 
 PetscErrorCode InvShellApplyBA(PC pc, PCSide side, Vec x, Vec y, Vec work){
 
-    Vec work2;
     InvShellPC *shell;
     PCShellGetContext(pc, &shell);
-    VecDuplicate(work, &work2);
 
-    PCApplySymmetricRight(shell->pc, x, work);
-    MatMult(shell->Q, work, work2);
-    PCApplySymmetricLeft(shell->pc, work2, y);
+    PCApplySymmetricRight(shell->pc, x, y);
+    MatMult(shell->Q, y, work);
+    PCApplySymmetricLeft(shell->pc, work, y);
 
     return 0;
 }
