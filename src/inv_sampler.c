@@ -7,77 +7,31 @@
 #define INV_SAMPLER_VERBOSE "SAMPLER:\t"
 
 
-KSP InvSamplerCreateKSP(MPI_Comm comm, Mat Q, int max_niter, int verbose){
+PetscErrorCode InvSamplerStdNormal(pcg64_random_t* rng, Vec* z, int verbose){
 
-    if(verbose) printf("%sSetting up a solver with a shell preconditioner...\n", INV_SAMPLER_VERBOSE);
-    InvShellPC* shell;
-    KSP ksp;
-    PC pc;
-    
-    KSPCreate(comm, &ksp);
-    KSPSetOperators(ksp, Q, Q);
-    KSPSetTolerances(ksp, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, max_niter);
-    KSPSetComputeEigenvalues(ksp, PETSC_TRUE);
-    KSPSetPCSide(ksp, PC_SYMMETRIC);
-    KSPGetPC(ksp, &pc);
+    int i_start, i_end;
+    VecGetOwnershipRange(*z, &i_start, &i_end);
+    for(int i=i_start; i<i_end; i++) VecSetValue(*z, i, InvRandomStdNormal(rng), INSERT_VALUES);
+    VecAssemblyBegin(*z);
+    VecAssemblyEnd(*z);
 
-    PCSetType(pc, PCSHELL);
-    InvShellCreate(&shell);
-    PCShellSetApply(pc, InvShellApply);
-    PCShellSetApplyTranspose(pc, InvShellApplyTranspose);
-    PCShellSetApplyBA(pc, InvShellApplyBA);
-    PCShellSetApplySymmetricLeft(pc, InvShellApplyLeft);
-    PCShellSetApplySymmetricRight(pc, InvShellApplyRight);
-    PCShellSetContext(pc, shell);
-    PCShellSetDestroy(pc, InvShellDestroy);
-    PCShellSetName(pc, "shell");
-    InvShellSetup(pc, Q, comm);
-    if(verbose) printf("%sSolver created.\n", INV_SAMPLER_VERBOSE);
-
-    return ksp;
+    return 0;
 }
 
 
-Vec InvSamplerStdNormal(MPI_Comm comm, Vec z, pcg64_random_t* rng, InvIS* mapping, int verbose){
-
-    int rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
-
-    if(verbose) printf("%sSampling standard normal..\n", INV_SAMPLER_VERBOSE);
-    int Istart, Iend;
-    if(!z){
-        VecCreate(comm, &z);
-        VecSetType(z, VECMPI);
-        VecSetSizes(z, mapping->n_local[rank], PETSC_DETERMINE);
-        VecSetFromOptions(z);
-        VecSetUp(z);
-    }
-    VecGetOwnershipRange(z, &Istart, &Iend);
-    for(int j=Istart; j<Iend; j++){
-        VecSetValue(z, j, InvRandomStdNormal(rng), INSERT_VALUES);
-    }
-    VecAssemblyBegin(z);
-    VecAssemblyEnd(z);
-
-    return z;
-}
-
-
-Vec InvSamplerGMRF(KSP ksp, Vec xx, Vec z, int verbose){
+PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x, int verbose){
 
     if(verbose) printf("%sSampling GMRF..\n", INV_SAMPLER_VERBOSE);
 
     /* Solve a system */
     if(verbose) printf("%sSolving a system...\n", INV_SAMPLER_VERBOSE);
     int niter, max_niter;
-    Vec x, y;
+    Vec xx, y;
     VecDuplicate(z, &y);
-    VecDuplicate(z, &x);
-    if(!xx) VecDuplicate(z, &xx);
-    VecSet(x, 0.0);
-    VecAssemblyBegin(x);
-    VecAssemblyEnd(x);
+    VecDuplicate(z, &xx);
+    VecSet(xx, 0.0);
+    VecAssemblyBegin(xx);
+    VecAssemblyEnd(xx);
     KSPSolve(ksp, z, y);
     KSPGetIterationNumber(ksp, &niter);
     KSP_GMRES* gmres = (KSP_GMRES*)ksp->data;
@@ -102,7 +56,7 @@ Vec InvSamplerGMRF(KSP ksp, Vec xx, Vec z, int verbose){
     dsteqr_(&eig_v, &eig_n, eig_diag, eig_offdiag, eig_vectors, &eig_n, eig_work, &eig_info);
     if(verbose) printf("%sEigensolve finished.\n", INV_SAMPLER_VERBOSE);
 
-    /* Compute right term of x = V U D^-1/2 U^T (beta e_1) = V * udube, that is, of 'udube'     }:8)     */
+    /* Compute right term of xx = V U D^-1/2 U^T (beta e_1) = V * udube, that is, of 'udube'     }:8)     */
     if(verbose) printf("%sComputing weights...\n", INV_SAMPLER_VERBOSE);
     double beta0 = gmres->rnorm0;
     double udube[niter];
@@ -113,21 +67,21 @@ Vec InvSamplerGMRF(KSP ksp, Vec xx, Vec z, int verbose){
         }
     }
 
-    /* Compute the sample x = V * udube */
+    /* Compute the sample xx = V * udube */
     if(verbose) printf("%sAssembling a sample...\n", INV_SAMPLER_VERBOSE);
-    VecMAXPY(x, niter, udube, v);
+    VecMAXPY(xx, niter, udube, v);
 
-    /* Unwind the preconditioner x = L^-T * V */
+    /* Unwind the preconditioner x = L^-T * V * xx */
     if(verbose) printf("%sUnwinding preconditioner...\n", INV_SAMPLER_VERBOSE);
     PC pc;
     KSPGetPC(ksp, &pc);
-    PCApplySymmetricRight(pc, x, xx);
+    PCApplySymmetricRight(pc, xx, *x);
 
     /* Clean up */
     VecDestroy(&y);
-    VecDestroy(&x);
+    VecDestroy(&xx);
     free(eig_vectors);
     if(verbose) printf("%sSample computed.\n", INV_SAMPLER_VERBOSE);
 
-    return xx;
+    return 0;
 }

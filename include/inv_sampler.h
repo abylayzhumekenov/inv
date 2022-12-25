@@ -3,16 +3,15 @@
 
 #include <petsc.h>
 #include "inv_random.h"
-#include "inv_is.h"
 
 
-KSP InvSamplerCreateKSP(MPI_Comm comm, Mat Q, int max_niter, int verbose);
+// KSP InvSamplerCreateKSP(MPI_Comm comm, Mat Q, int max_niter, int verbose);
 
 
-Vec InvSamplerStdNormal(MPI_Comm comm, Vec z, pcg64_random_t* rng, InvIS* mapping, int verbose);
+PetscErrorCode InvSamplerStdNormal(pcg64_random_t* rng, Vec* z, int verbose);
 
 
-Vec InvSamplerGMRF(KSP ksp, Vec x, Vec z, int verbose);
+PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x, int verbose);
 
 
 #endif
