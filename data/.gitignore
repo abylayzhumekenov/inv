@@ -1,4 +1,4 @@
 *
 */
 !.gitignore
-!.generate_Q.R
+!generate_Q.R
