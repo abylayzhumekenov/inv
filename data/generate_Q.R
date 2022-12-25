@@ -1,7 +1,7 @@
 # load libraries
 library(INLA)
 set.seed(100)
-setwd("/home/abylay/KAUST/Research/Project 1 - Adaptive Krylov Methods/Codes/Phase 10/inv_2/data/")
+# setwd("/home/abylay/KAUST/Research/Project 1 - Adaptive Krylov Methods/Codes/Phase 10/inv_2/data/")
 
 # function to write in binary
 write_petsc = function(Q, filename){
