@@ -24,7 +24,6 @@ MPI options:
 * `-n` number of processes
 
 Program options:
-* `-fin` MatrixMarket file name
 * `-ns` number of samples
 * `-nn` number of neighbors
 * `-nmax` max number of iterations
@@ -33,6 +32,6 @@ Program options:
 
 ## Input and output
 
-Place input matrix files `filename` in the `data` folder
+Run `Rscript generate_Q.R` from inside the `data` folder to generate precision matrices
 
-The output will be written as a binary vector `x_[filename]`, where the first 64 bits (header) can be ignored
+The output will be written as a binary vector `out`, where the first 64 bits (header) can be ignored
