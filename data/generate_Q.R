@@ -58,12 +58,12 @@ gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.sq)
 # ------------------------------------------------------------------------------
 
 # temporal mesh
-m.t = 50
+m.t = 100
 mesh.t = inla.mesh.1d(1:m.t)
 fem.t = inla.mesh.fem(mesh.t, order = 2)
 
 # spatial mesh
-m.s = 1
+m.s = 2
 # loc.s = cbind(rep(seq(0, 1, length.out = m.s), times = m.s), rep(seq(0, 1, length.out = m.s), each = m.s))
 # mesh.s = inla.mesh.2d(loc.s, max.edge = 2/m.s)
 mesh.s = inla.mesh.create(globe = m.s)
@@ -145,7 +145,7 @@ cat(paste("Time elapsed:", formatC(r.time[[3]], format = "e"), "sec"), "\n")
 c.options = list(n_core = 2,
                  n_sample = 100,
                  n_niter = 1000,
-                 n_neighbor = 5,
+                 n_neighbor = 10,
                  verbose = 1,
                  verbose_s = 0)
 

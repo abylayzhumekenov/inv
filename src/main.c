@@ -16,7 +16,7 @@ int main(int argc, char **argv){
 
 
     /* Set parameters from the options */
-    int max_niter = 1000, n_sample = 1000, n_neighbor = 1, verbose = 0, verbose_s = 0, n_part = 1;
+    int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, n_part = 1;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
             n_sample = atoi(argv[i+1]);
@@ -255,6 +255,7 @@ int main(int argc, char **argv){
         VecAXPY(d, 1.0/n_sample, w);
         VecRestoreSubVector(x_scatter, is_separ, &x_separ);
     }
+    
 
     /* Assemble the solution */
     Vec d_origi, d_global;
@@ -272,11 +273,6 @@ int main(int argc, char **argv){
 
     PetscViewerBinaryOpen(PETSC_COMM_WORLD, "data/out", FILE_MODE_WRITE, &viewer);
     VecView(d_global, viewer);
-
-                /* Memory leak somewhere here... scatter? subvector? */
-            double log;
-            PetscMallocGetCurrentUsage(&log);
-            if(!rank) printf("----------------- %f \n", log);
 
 
     /* Clean up */
