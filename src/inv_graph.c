@@ -6,7 +6,17 @@
 
 #include "inv_graph.h"
 
+
 #define INV_GRAPH_VERBOSE "GRAPH:\t\t"
+
+uint32_t htobe32(uint32_t x) {
+	union { uint32_t u32; uint8_t v[4]; } ret;
+	ret.v[0] = (uint8_t)(x >> 24);
+	ret.v[1] = (uint8_t)(x >> 16);
+	ret.v[2] = (uint8_t)(x >> 8);
+	ret.v[3] = (uint8_t) x;
+	return ret.u32;
+}
 
 
 InvGraph* InvGraphCreate(char* filename, int verbose){

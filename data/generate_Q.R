@@ -1,7 +1,6 @@
 # load libraries
 library(INLA)
 set.seed(100)
-# setwd("/home/abylay/KAUST/Research/Project 1 - Adaptive Krylov Methods/Codes/Phase 10/inv_2/data/")
 
 # function to write in binary
 write_petsc = function(Q, filename){
@@ -153,11 +152,10 @@ c.options = list(n_core = 2,
 # writeMM(Q.posterior[1:n.st, 1:n.st], c.options$fin)
 
 # call C code
-c.call = paste("PETSC_DIR=\"/home/abylay/KAUST/Libraries/C/petsc\"",
-               "PETSC_ARCH=\"/arch-linux-c-debug\"",
-               "METIS_DIR=\"/home/abylay/KAUST/Libraies/C/metis\"",
-               "LD_LIBRARY_PATH=$PETSC_DIR$PETSC_ARCH/lib",
-               "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$METIS_DIR/lib",
+c.call = paste(paste0("PETSC_DIR=", Sys.getenv("PETSC_DIR")),
+               paste0("PETSC_ARCH=", Sys.getenv("PETSC_ARCH")),
+               paste0("METIS_DIR=", Sys.getenv("METIS_DIR")),
+               paste0("LD_LIBRARY_PATH=", Sys.getenv("LD_LIBRARY_PATH")),
                "export PETSC_DIR",
                "export PETSC_ARCH",
                "export METIS_DIR",
@@ -228,4 +226,3 @@ cat(paste0("Dimensions|", "\t\tSpace: ", n.s, "\tTime: ", n.t, "\tOverall: ", n.
            "Number of cores|", "\tR code: ", 1, "\t\tC code: ", c.options$n_core, "\n",
            "Time elapsed|", "\t\tR code: ", formatC(r.time[[3]], format = "e"),
            "\tC code: ", formatC(c.time[[3]], format = "e")), "\n")
-
