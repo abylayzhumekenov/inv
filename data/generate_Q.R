@@ -94,7 +94,6 @@ write_petsc(K.1, "K1")
 write_petsc(K.2, "K2")
 write_petsc(K.3, "K3")
 
-print(c(m.t, m.s, range.t))
 # # spatio-temporal precision
 # Q.st = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*2*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
 # n.st = nrow(Q.st)
