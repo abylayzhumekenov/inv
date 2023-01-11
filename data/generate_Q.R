@@ -5,7 +5,7 @@ set.seed(100)
 # function to write in binary
 write_petsc = function(Q, filename){
     # encode the matrix
-    Q = as(Q, "dgCMatrix")
+    Q = as(Q, "generalMatrix")
     x = list(classid = 1211216,
              nrows = nrow(Q),
              ncols = nrow(Q),
@@ -62,7 +62,7 @@ mesh.t = inla.mesh.1d(1:m.t)
 fem.t = inla.mesh.fem(mesh.t, order = 2)
 
 # spatial mesh
-m.s = 2
+m.s = 4
 # loc.s = cbind(rep(seq(0, 1, length.out = m.s), times = m.s), rep(seq(0, 1, length.out = m.s), each = m.s))
 # mesh.s = inla.mesh.2d(loc.s, max.edge = 2/m.s)
 mesh.s = inla.mesh.create(globe = m.s)
