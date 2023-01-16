@@ -12,7 +12,7 @@ OBJS = $(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 GMRES_DIR = $(PETSC_DIR)/src/ksp/ksp/impls/gmres/
 MATSBAIJ_DIR = $(PETSC_DIR)/src/mat/impls/sbaij/seq/
 
-CFLAGS = -g -Wall -I$(INC) -I$(PETSC_DIR)/include -I$(PETSC_DIR)$(PETSC_ARCH)/include -I$(GMRES_DIR) -I$(MATSBAIJ_DIR) -I$(PCG_DIR)/include -I$(METIS_DIR)/include
+CFLAGS = -std=c99 -g -Wall -I$(INC) -I$(PETSC_DIR)/include -I$(PETSC_DIR)$(PETSC_ARCH)/include -I$(GMRES_DIR) -I$(MATSBAIJ_DIR) -I$(PCG_DIR)/include -I$(METIS_DIR)/include
 LIBS_PATH = -L$(PETSC_DIR)$(PETSC_ARCH)/lib -L$(PCG_DIR)/src -L$(METIS_DIR)/lib
 LIBS = -lm -lpetsc -llapack -lpcg_random -lmetis
 
