@@ -54,6 +54,9 @@ int main(int argc, char **argv){
     MatCreate(PETSC_COMM_SELF, &K1);
     MatCreate(PETSC_COMM_SELF, &K2);
     MatCreate(PETSC_COMM_SELF, &K3);
+    MatSetType(J0_global, MATMPIAIJ);
+    MatSetType(J1_global, MATMPIAIJ);
+    MatSetType(J2_global, MATMPIAIJ);
     MatSetType(J0, MATSEQAIJ);
     MatSetType(J1, MATSEQAIJ);
     MatSetType(J2, MATSEQAIJ);
@@ -115,18 +118,7 @@ int main(int argc, char **argv){
     ISCreateStride(PETSC_COMM_SELF, n_local, 0, 1, &is_origi);
 
     
-    // /* Create the local matrix */
-    // Mat J0_local, J1_local, J2_local, Q_local, Q1_local, Q2_local, Q;
-    // MatCreateSubMatrix(J0, ist_local, NULL, MAT_INITIAL_MATRIX, &J0_local);
-    // MatCreateSubMatrix(J1, ist_local, NULL, MAT_INITIAL_MATRIX, &J1_local);
-    // MatCreateSubMatrix(J2, ist_local, NULL, MAT_INITIAL_MATRIX, &J2_local);
-    // MatSeqAIJKron(J0_local, K3, MAT_INITIAL_MATRIX, &Q_local);
-    // MatSeqAIJKron(J1_local, K2, MAT_INITIAL_MATRIX, &Q1_local);
-    // MatSeqAIJKron(J2_local, K1, MAT_INITIAL_MATRIX, &Q2_local);
-    // MatAXPY(Q_local, 1.0, Q1_local, DIFFERENT_NONZERO_PATTERN);
-    // MatAXPY(Q_local, 1.0, Q2_local, DIFFERENT_NONZERO_PATTERN);
-    // MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, Q_local, n_local, MAT_INITIAL_MATRIX, &Q);
-
+    /* Create the global matrix */
     Mat Q, Q1, Q2;
     MatMPIAIJKron(J0_global, K3, MAT_INITIAL_MATRIX, &Q);
     MatMPIAIJKron(J1_global, K2, MAT_INITIAL_MATRIX, &Q1);

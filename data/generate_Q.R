@@ -65,12 +65,12 @@ gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.sq)
 # ------------------------------------------------------------------------------
 
 # temporal mesh
-if(!exists(deparse(substitute(m.t)))) m.t = 100
+if(!exists(deparse(substitute(m.t)))) m.t = 2
 mesh.t = inla.mesh.1d(1:m.t)
 fem.t = inla.mesh.fem(mesh.t, order = 2)
 
 # spatial mesh
-if(!exists(deparse(substitute(m.s)))) m.s = 4
+if(!exists(deparse(substitute(m.s)))) m.s = 1
 # loc.s = cbind(rep(seq(0, 1, length.out = m.s), times = m.s), rep(seq(0, 1, length.out = m.s), each = m.s))
 # mesh.s = inla.mesh.2d(loc.s, max.edge = 2/m.s)
 mesh.s = inla.mesh.create(globe = m.s)
@@ -94,34 +94,35 @@ write_petsc(K.1, "K1")
 write_petsc(K.2, "K2")
 write_petsc(K.3, "K3")
 
-# # spatio-temporal precision
-# Q.st = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*2*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
-# n.st = nrow(Q.st)
-# n.t = m.t
-# n.s = n.st / n.t
-# 
-# # fixed effects precision
-# n.beta = 1
-# tau.beta = 1e-5
-# Q.beta = Diagonal(n.beta, tau.beta)
-# 
-# # latent field prior precision
-# Q.prior = rbind(cbind(Q.st, sparseMatrix(NULL, NULL, dims = c(nrow(Q.st), nrow(Q.beta)))),
-#                 cbind(sparseMatrix(NULL, NULL, dims = c(nrow(Q.beta), nrow(Q.st))), Q.beta))
-# n.x = nrow(Q.prior)
-# 
-# # data matrices
-# Z = matrix(rnorm(n.st*n.beta), n.st, n.beta)
-# B = Diagonal(n.st)
-# A = cbind(B, Z)
-# 
-# # observation precision
-# tau.y = 1e-5
-# Q.y = Diagonal(n.st, tau.y)
-# 
-# # latent field posterior precision
-# Q.posterior = Q.prior + crossprod(A, Q.y) %*% A
-# 
+# spatio-temporal precision
+Q.st = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*2*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
+n.st = nrow(Q.st)
+n.t = m.t
+n.s = n.st / n.t
+
+# fixed effects precision
+n.beta = 1
+tau.beta = 1e-5
+Q.beta = Diagonal(n.beta, tau.beta)
+
+# latent field prior precision
+Q.prior = rbind(cbind(Q.st, sparseMatrix(NULL, NULL, dims = c(nrow(Q.st), nrow(Q.beta)))),
+                cbind(sparseMatrix(NULL, NULL, dims = c(nrow(Q.beta), nrow(Q.st))), Q.beta))
+n.x = nrow(Q.prior)
+
+# data matrices
+Z = matrix(rnorm(n.st*n.beta), n.st, n.beta)
+Z = matrix(1, n.st, n.beta)
+B = Diagonal(n.st)
+A = cbind(B, Z)
+
+# observation precision
+tau.y = 1e-5
+Q.y = Diagonal(n.st, tau.y)
+
+# latent field posterior precision
+Q.posterior = Q.prior + crossprod(A, Q.y) %*% A
+
 # # # ------------------------------------------------------------------------------
 # # # PLOT PRECISION MATRICES
 # # # ------------------------------------------------------------------------------
@@ -196,18 +197,18 @@ write_petsc(K.3, "K3")
 # legend("topright", legend = c("Krylov", "True"), col = c("red", "black"), lty = 1)
 # d.error = norm(d.inv - d.true, "2")
 # 
-# # # ------------------------------------------------------------------------------
-# # # OBTAIN POSTERIOR USING R
-# # # ------------------------------------------------------------------------------
-# 
-# # # generate observations
-# # x = drop(inla.qsample(1, Q.prior))
-# # y = drop(A %*% x + inla.qsample(1, Q.y))
-# 
-# # # compute the posterior mean
-# # mu.x = drop(solve(Q.posterior, crossprod(A, Q.y %*% y)))
-# # mu.s = mu.x[1:n.s]
-# 
+# ------------------------------------------------------------------------------
+# OBTAIN POSTERIOR USING R
+# ------------------------------------------------------------------------------
+
+# generate observations
+x = drop(inla.qsample(1, Q.prior))
+y = drop(A %*% x + inla.qsample(1, Q.y))
+
+# compute the posterior mean
+mu.x = drop(solve(Q.posterior, crossprod(A, Q.y %*% y)))
+mu.s = mu.x[1:n.s]
+
 # # # ------------------------------------------------------------------------------
 # # # PROJECT SOLUTION AND PLOT
 # # # ------------------------------------------------------------------------------
