@@ -1,2 +1,6 @@
 .vscode/
+job.modules
+job.sh
+job.err
+job.out
 !.gitignore
