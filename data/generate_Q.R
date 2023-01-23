@@ -50,7 +50,7 @@ nu.s = alpha.s * nu.t
 # set practical range and marginal variance
 sigma.sq = 1
 range.s = 1
-if(!exists(deparse(substitute(range.t)))) range.t = 10
+if(!exists(deparse(substitute(range.t)))) range.t = 1
 theta = log(c(sigma.sq, range.s, range.t))
 
 # convert hyperparameters

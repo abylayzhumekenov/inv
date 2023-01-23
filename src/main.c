@@ -17,6 +17,7 @@ int main(int argc, char **argv){
 
     /* Set parameters from the options */
     int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, n_part = 1;
+    double tau = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
             n_sample = atoi(argv[i+1]);
@@ -28,6 +29,8 @@ int main(int argc, char **argv){
             verbose = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-vs")){
             verbose_s = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-tau")){
+            tau = atof(argv[i+1]);
         }
         argv[i] = 0;
     }
@@ -91,7 +94,7 @@ int main(int argc, char **argv){
 
 
     /* Get dimensions */
-    int ns, nt_local, nt_ghost, nt_exten, nt_separ, nt, n_local, n_ghost, n_exten, n_separ, n;
+    int ns, nt_local, nt_ghost, nt_exten, nt_separ, nt, n_local, n_ghost, n_exten, n_separ, n, istart, iend;
     MatGetSize(K3, &ns, &ns);
     nt_local = graph->offset[1] - graph->offset[0];
     nt_ghost = graph->offset[2] - graph->offset[1];
@@ -125,6 +128,8 @@ int main(int argc, char **argv){
     MatMPIAIJKron(J2_global, K1, MAT_INITIAL_MATRIX, &Q2);
     MatAXPY(Q, 1.0, Q1, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Q, 1.0, Q2, DIFFERENT_NONZERO_PATTERN);
+    MatGetOwnershipRange(Q, &istart, &iend);
+    for(int i=istart; i<iend; i++) MatSetValue(Q, i, i, tau, ADD_VALUES);
     MatAssemblyBegin(Q, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Q, MAT_FINAL_ASSEMBLY);
 
@@ -139,6 +144,8 @@ int main(int argc, char **argv){
     MatSeqAIJKron(J2_exten, K1, MAT_INITIAL_MATRIX, &Q2_exten);
     MatAXPY(Q_exten, 1.0, Q1_exten, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Q_exten, 1.0, Q2_exten, DIFFERENT_NONZERO_PATTERN);
+    MatGetOwnershipRange(Q_exten, &istart, &iend);
+    for(int i=istart; i<iend; i++) MatSetValue(Q_exten, i, i, tau, ADD_VALUES);
     MatAssemblyBegin(Q_exten, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Q_exten, MAT_FINAL_ASSEMBLY);
 
@@ -263,8 +270,77 @@ int main(int argc, char **argv){
     ISRestoreIndices(is_origi, &is_array);
     VecRestoreArray(d_origi, &d_array);
 
+
+    /* Assemble the precision matrix with an intercept block */
+    Mat Q_full, M1, M2, M3;
+    MatConcatenateIntercept(Q, &Q_full, 1e-5);
+    MatNestGetSubMat(Q_full, 0, 1, &M1);
+    MatNestGetSubMat(Q_full, 1, 0, &M2);
+    MatNestGetSubMat(Q_full, 1, 1, &M3);
+
+
+    /* Solve the full system for the covariance of the intercept */
+    int n_full, n_local_full;
+    Vec e, s;
+    KSP ksp_full;
+    PC pc_full;
+    MatGetLocalSize(Q_full, &n_local_full, &n_local_full);
+    MatGetSize(Q_full, &n_full, &n_full);
+    VecCreateMPI(PETSC_COMM_WORLD, n_local_full, PETSC_DETERMINE, &e);
+    VecDuplicate(e, &s);
+    VecSet(e, 0);
+    VecSetValue(e, n_full-1, 1.0, INSERT_VALUES);
+    VecAssemblyBegin(e);
+    VecAssemblyEnd(e);
+
+    KSPCreate(PETSC_COMM_WORLD, &ksp_full);
+    KSPSetOperators(ksp_full, Q_full, Q_full);
+    KSPGetPC(ksp_full, &pc_full);
+    PCSetType(pc_full, PCFIELDSPLIT);
+    PCFieldSplitSetType(pc_full, PC_COMPOSITE_ADDITIVE);
+    PCFieldSplitSetSchurFactType(pc_full, PC_FIELDSPLIT_SCHUR_FACT_DIAG);
+    KSPSetTolerances(ksp_full, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    KSPSetUp(ksp_full);
+    KSPSolve(ksp_full, e, s);
+    
+    // /* Check the solution */
+    // const char* reason;
+    // int niter;
+    // double res;
+    // KSPGetResidualNorm(ksp_full, &res);
+    // KSPGetIterationNumber(ksp_full, &niter);
+    // KSPGetConvergedReasonString(ksp_full, &reason);
+    // if(!rank) printf("%s, %i iterations, %lf\n", reason, niter, res);
+
+
+    /* Assemble the estimate conditioned on the intercept */
+    int last = (rank==size-1);
+    double sigma_intercept;
+    double* s_array;
+    VecPointwiseMult(e, s, e);
+    VecPointwiseMult(s, s, s);
+    VecSum(e, &sigma_intercept);
+    VecScale(s, 1.0/sigma_intercept);
+    VecGetArray(d_global, &d_array);
+    VecGetArray(s, &s_array);
+    for(int i=0; i<n_local_global; i++) s_array[i] += d_array[i];
+    VecRestoreArray(d_global, &d_array);
+    VecRestoreArray(s, &s_array);
+
+
+    /* Save the output */
     PetscViewerBinaryOpen(PETSC_COMM_WORLD, "data/out", FILE_MODE_WRITE, &viewer);
-    VecView(d_global, viewer);
+    VecView(s, viewer);
+
+
+    /* Small clean up */
+    MatDestroy(&Q_full);
+    MatDestroy(&M1);
+    MatDestroy(&M2);
+    MatDestroy(&M3);
+    VecDestroy(&e);
+    VecDestroy(&s);
+    KSPDestroy(&ksp_full);
 
 
     /* Clean up */
