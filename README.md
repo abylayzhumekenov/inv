@@ -32,6 +32,7 @@ Program options:
 * `-nmax` max number of iterations
 * `-v` verbose
 * `-vs` separate verbose for sampling phase
+* `-tau` precision for observations
 
 ## Input and output
 
