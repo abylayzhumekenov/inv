@@ -13,7 +13,7 @@
  * @param C An MPI Kronecker product
  * @return PetscErrorCode 
  */
-PetscErrorCode MatMPIAIJKron(Mat A, Mat B, MatReuse reuse, Mat* C);
+PetscErrorCode MatMPIAIJKron(Mat A, Mat B, Mat* C);
 
 
 /**

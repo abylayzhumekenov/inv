@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <petsc.h>
+#include <petscmat.h>
 #include <mpi.h>
 
 #include "inv_matrix.h"
@@ -16,7 +17,7 @@ int main(int argc, char **argv){
 
 
     /* Set parameters from the options */
-    int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, n_part = 1;
+    int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, n_part = 1, selected = 1;
     double tau = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
@@ -29,6 +30,8 @@ int main(int argc, char **argv){
             verbose = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-vs")){
             verbose_s = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-sel")){
+            selected = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-tau")){
             tau = atof(argv[i+1]);
         }
@@ -123,9 +126,9 @@ int main(int argc, char **argv){
     
     /* Create the global matrix */
     Mat Q, Q1, Q2;
-    MatMPIAIJKron(J0_global, K3, MAT_INITIAL_MATRIX, &Q);
-    MatMPIAIJKron(J1_global, K2, MAT_INITIAL_MATRIX, &Q1);
-    MatMPIAIJKron(J2_global, K1, MAT_INITIAL_MATRIX, &Q2);
+    MatMPIAIJKron(J0_global, K3, &Q);
+    MatMPIAIJKron(J1_global, K2, &Q1);
+    MatMPIAIJKron(J2_global, K1, &Q2);
     MatAXPY(Q, 1.0, Q1, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Q, 1.0, Q2, DIFFERENT_NONZERO_PATTERN);
     MatGetOwnershipRange(Q, &istart, &iend);
@@ -166,7 +169,7 @@ int main(int argc, char **argv){
 
     /* Compute the direct solution */   /* Ideally, should use Takahashi equations, but will not be able to solve with it... */
     Vec d;
-    Mat L, II, S;
+    Mat L;
     IS is_direct;
     VecCreateSeq(PETSC_COMM_SELF, n_exten, &d);
     MatSetOption(Q_exten, MAT_SYMMETRIC, PETSC_TRUE);
@@ -174,15 +177,39 @@ int main(int argc, char **argv){
     MatGetFactor(Q_exten, MATSOLVERMUMPS, MAT_FACTOR_CHOLESKY, &L);
     MatCholeskyFactorSymbolic(L, Q_exten, is_direct, NULL);
     MatCholeskyFactorNumeric(L, Q_exten, NULL);
-    MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, n_exten, n_exten, NULL, &II);
-    MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, n_exten, n_exten, NULL, &S);
-    for(int i=0; i<n_exten; i++) MatSetValue(II, i, i, 1.0, INSERT_VALUES);
-    MatAssemblyBegin(II, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(II, MAT_FINAL_ASSEMBLY);
-    MatMatSolve(L, II, S);
-    MatAssemblyBegin(S, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(S, MAT_FINAL_ASSEMBLY);
-    MatGetDiagonal(S, d);
+
+
+    if(selected){
+
+        /* Selected inversion */
+        Mat D;
+        MatCreate(PETSC_COMM_SELF, &D);
+        MatSetSizes(D, n_exten, n_exten, PETSC_DECIDE, PETSC_DECIDE);
+        MatSetType(D, MATSEQAIJ);
+        MatSetFromOptions(D);
+        MatSetUp(D);
+        for(int i=0; i<n_exten; i++) MatSetValue(D, i, i, 1.0, INSERT_VALUES);
+        MatAssemblyBegin(D, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(D, MAT_FINAL_ASSEMBLY);
+        MatMumpsGetInverseTranspose(L, D);
+        MatGetDiagonal(D, d);
+        MatDestroy(&D);
+    } else {
+
+        /* Dense inversion */
+        Mat II, S;
+        MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, n_exten, n_exten, NULL, &II);
+        MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, n_exten, n_exten, NULL, &S);
+        for(int i=0; i<n_exten; i++) MatSetValue(II, i, i, 1.0, INSERT_VALUES);
+        MatAssemblyBegin(II, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(II, MAT_FINAL_ASSEMBLY);
+        MatMatSolve(L, II, S);
+        MatAssemblyBegin(S, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(S, MAT_FINAL_ASSEMBLY);
+        MatGetDiagonal(S, d);
+        MatDestroy(&II);
+        MatDestroy(&S);
+    }
 
 
     /* Create a solver for correction */
@@ -375,8 +402,6 @@ int main(int argc, char **argv){
     MatDestroy(&Q1_separ);
     MatDestroy(&Q2_separ);
     MatDestroy(&L);
-    MatDestroy(&II);
-    MatDestroy(&S);
 
     VecDestroy(&d);
     VecDestroy(&d_origi);

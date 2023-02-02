@@ -1,7 +1,7 @@
 #include "inv_matrix.h"
 
 
-PetscErrorCode MatMPIAIJKron(Mat A, Mat B, MatReuse reuse, Mat* C){
+PetscErrorCode MatMPIAIJKron(Mat A, Mat B, Mat* C){
 
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
@@ -10,11 +10,11 @@ PetscErrorCode MatMPIAIJKron(Mat A, Mat B, MatReuse reuse, Mat* C){
     Mat *A_seq[1], C_seq;
     IS isrow[1], iscol[1];
     MatGetOwnershipIS(A, &isrow[0], &iscol[0]);
-    MatCreateSubMatrices(A, 1, isrow, iscol, reuse, A_seq);
+    MatCreateSubMatrices(A, 1, isrow, iscol, MAT_INITIAL_MATRIX, A_seq);
 
-    MatSeqAIJKron(*A_seq[0], B, reuse, &C_seq);
+    MatSeqAIJKron(*A_seq[0], B, MAT_INITIAL_MATRIX, &C_seq);
     MatGetSize(C_seq, &n_local, &n);
-    MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, C_seq, n_local, reuse, C);
+    MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, C_seq, n_local, MAT_INITIAL_MATRIX, C);
 
     MatDestroyMatrices(1, A_seq);
     MatDestroy(&C_seq);
@@ -36,7 +36,7 @@ PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau){
 
     Mat M1, M2, M3, Q1, Q2, Q3;
     MatCreateSeqAIJ(PETSC_COMM_SELF, n_local, 1, 1, NULL, &M1);
-    MatCreateSeqAIJ(PETSC_COMM_SELF, last, size*n_local, size*n_local, NULL, &M2);
+    MatCreateSeqAIJ(PETSC_COMM_SELF, last, n, n, NULL, &M2);
     MatCreateSeqAIJ(PETSC_COMM_SELF, last, 1, 1, NULL, &M3);
 
     int istart, iend;
@@ -44,6 +44,12 @@ PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau){
     for(int i=0; i<n_local; i++) MatSetValue(M1, i, 0, tau, INSERT_VALUES);
     if(last) { for(int i=0; i<n; i++) MatSetValue(M2, 0, i, tau, INSERT_VALUES); }
     if(last) MatSetValue(M3, 0, 0, tau*(n+1), INSERT_VALUES);
+    MatAssemblyBegin(M1, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(M1, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(M2, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(M2, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(M3, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(M3, MAT_FINAL_ASSEMBLY);
 
     MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, M1, last, MAT_INITIAL_MATRIX, &Q1);
     MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, M2, n_local, MAT_INITIAL_MATRIX, &Q2);
