@@ -13,11 +13,14 @@
 #include "inv_random.h"
 
 
+#define INV_MATRIX_VERBOSE "MATRIX:\t\t"
+
+
 int main(int argc, char **argv){
 
 
     /* Set parameters from the options */
-    int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, n_part = 1, selected = 1;
+    int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, selected = 1;
     double tau = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
@@ -49,6 +52,7 @@ int main(int argc, char **argv){
 
 
     /* Binary matrix load */
+    if(verbose) printf("%sLoading matrices...\n", INV_MATRIX_VERBOSE);
     PetscViewer viewer;
     Mat J0_global, J1_global, J2_global, J0, J1, J2, K1, K2, K3;
     MatCreate(PETSC_COMM_WORLD, &J0_global);
@@ -88,6 +92,8 @@ int main(int argc, char **argv){
     PetscViewerBinaryOpen(PETSC_COMM_SELF, "data/K3", FILE_MODE_READ, &viewer);
     MatLoad(K3, viewer);
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
 
     /* Load and partition a temporal graph */
     InvGraph* graph = InvGraphCreate("data/J2", verbose);
@@ -95,9 +101,11 @@ int main(int argc, char **argv){
     InvGraphNeighbor(graph, n_neighbor, verbose);
     // InvGraphPrint(graph, verbose);
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
 
     /* Get dimensions */
-    int ns, nt_local, nt_ghost, nt_exten, nt_separ, nt, n_local, n_ghost, n_exten, n_separ, n, istart, iend;
+    int ns, nt_local, nt_ghost, nt_exten, nt_separ, nt, n_local, n_exten, n, istart, iend;
     MatGetSize(K3, &ns, &ns);
     nt_local = graph->offset[1] - graph->offset[0];
     nt_ghost = graph->offset[2] - graph->offset[1];
@@ -105,13 +113,12 @@ int main(int argc, char **argv){
     nt_separ = graph->offset[3] - graph->offset[2];
     nt = graph->n_vert;
     n_local = nt_local * ns;
-    n_ghost = nt_ghost * ns;
     n_exten = nt_exten * ns;
-    n_separ = nt_separ * ns;
     n = ns * nt;
 
 
     /* Create index sets */
+    if(verbose) printf("Creating index sets...\n");
     IS ist_local, ist_ghost, ist_exten, ist_separ, is_local, is_ghost, is_exten, is_separ, is_origi;
     ISCreateGeneral(PETSC_COMM_SELF, nt_local, graph->vert + graph->offset[0], PETSC_COPY_VALUES, &ist_local);
     ISCreateGeneral(PETSC_COMM_SELF, nt_ghost, graph->vert + graph->offset[1], PETSC_COPY_VALUES, &ist_ghost);
@@ -125,6 +132,7 @@ int main(int argc, char **argv){
 
     
     /* Create the global matrix */
+    if(verbose) printf("Creating the global matrix...\n");
     Mat Q, Q1, Q2;
     MatMPIAIJKron(J0_global, K3, &Q);
     MatMPIAIJKron(J1_global, K2, &Q1);
@@ -138,6 +146,7 @@ int main(int argc, char **argv){
 
     
     /* Create the extended matrix */
+    if(verbose) printf("Creating the extended matrices...\n");
     Mat J0_exten, J1_exten, J2_exten, Q_exten, Q1_exten, Q2_exten;
     MatCreateSubMatrix(J0, ist_exten, ist_exten, MAT_INITIAL_MATRIX, &J0_exten);
     MatCreateSubMatrix(J1, ist_exten, ist_exten, MAT_INITIAL_MATRIX, &J1_exten);
@@ -154,6 +163,7 @@ int main(int argc, char **argv){
 
 
     /* Create the separator portion of the matrix */
+    if(verbose) printf("Creating the separator portion of the matrix...\n");
     Mat J0_separ, J1_separ, J2_separ, Q_separ, Q1_separ, Q2_separ;
     MatCreateSubMatrix(J0, ist_exten, ist_separ, MAT_INITIAL_MATRIX, &J0_separ);
     MatCreateSubMatrix(J1, ist_exten, ist_separ, MAT_INITIAL_MATRIX, &J1_separ);
@@ -167,7 +177,8 @@ int main(int argc, char **argv){
     MatAssemblyEnd(Q_separ, MAT_FINAL_ASSEMBLY);
 
 
-    /* Compute the direct solution */   /* Ideally, should use Takahashi equations, but will not be able to solve with it... */
+    /* Compute the direct solution */
+    if(verbose) printf("Factoring the extended matrix...\n");
     Vec d;
     Mat L;
     IS is_direct;
@@ -182,6 +193,7 @@ int main(int argc, char **argv){
     if(selected){
 
         /* Selected inversion */
+        if(verbose) printf("Selected inversion...\n");
         Mat D;
         MatCreate(PETSC_COMM_SELF, &D);
         MatSetSizes(D, n_exten, n_exten, PETSC_DECIDE, PETSC_DECIDE);
@@ -197,6 +209,7 @@ int main(int argc, char **argv){
     } else {
 
         /* Dense inversion */
+        if(verbose) printf("Dense inversion...\n");
         Mat II, S;
         MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, n_exten, n_exten, NULL, &II);
         MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, n_exten, n_exten, NULL, &S);
@@ -213,6 +226,7 @@ int main(int argc, char **argv){
 
 
     /* Create a solver for correction */
+    if(verbose) printf("Creating a correction solver...\n");
     KSP ksp_exten;
     PC pc_exten;
     KSPCreate(PETSC_COMM_SELF, &ksp_exten);
@@ -226,6 +240,7 @@ int main(int argc, char **argv){
 
 
     /* Create a solver for sampling */
+    if(verbose) printf("Creating a sampling solver...\n");
     InvShellPC* shell;
     KSP ksp;
     PC pc;
@@ -236,6 +251,7 @@ int main(int argc, char **argv){
     KSPSetPCSide(ksp, PC_SYMMETRIC);
     KSPGetPC(ksp, &pc);
 
+    if(verbose) printf("Setting up a shell...\n");
     PCSetType(pc, PCSHELL);
     InvShellCreate(&shell);
     PCShellSetApply(pc, InvShellApply);
@@ -250,6 +266,7 @@ int main(int argc, char **argv){
 
 
     /* Prepare sampling vectors */
+    if(verbose) printf("Preparing for sampling...\n");
     pcg64_random_t rng = InvRandomCreate(0, 0, 1);
     VecScatter scatter;
     Vec x, x_scatter, x_separ, z, y, w;
@@ -263,6 +280,7 @@ int main(int argc, char **argv){
 
 
     /* Sample correction */
+    if(verbose) printf("Sampling...\n");
     for(int i=0; i<n_sample; i++){
 
         /* Sampling */
@@ -284,6 +302,7 @@ int main(int argc, char **argv){
     
 
     /* Assemble the solution */
+    if(verbose) printf("Computing the diagonal...\n");
     Vec d_origi, d_global;
     const int* is_array;
     double* d_array;
@@ -299,6 +318,7 @@ int main(int argc, char **argv){
 
 
     /* Assemble the precision matrix with an intercept block */
+    if(verbose) printf("Augmenting the precision with covariates...\n");
     Mat Q_full, M1, M2, M3;
     MatConcatenateIntercept(Q, &Q_full, 1e-5);
     MatNestGetSubMat(Q_full, 0, 1, &M1);
@@ -307,6 +327,7 @@ int main(int argc, char **argv){
 
 
     /* Solve the full system for the covariance of the intercept */
+    if(verbose) printf("Solving the full system...\n");
     int n_full, n_local_full;
     Vec e, s;
     KSP ksp_full;
@@ -341,7 +362,7 @@ int main(int argc, char **argv){
 
 
     /* Assemble the estimate conditioned on the intercept */
-    int last = (rank==size-1);
+    if(verbose) printf("Assembling the final solution...\n");
     double sigma_intercept;
     double* s_array;
     VecPointwiseMult(e, s, e);
@@ -356,6 +377,7 @@ int main(int argc, char **argv){
 
 
     /* Save the output */
+    if(verbose) printf("Saving results...\n");
     PetscViewerBinaryOpen(PETSC_COMM_WORLD, "data/out", FILE_MODE_WRITE, &viewer);
     VecView(s, viewer);
 
