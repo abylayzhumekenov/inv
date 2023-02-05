@@ -1,0 +1,57 @@
+int max_niter, n_sample, n_neighbor, verbose, verbose_s, selected;
+double tau;
+
+int rank, size;
+// mpi_rank, mpi_size;
+
+PetscViewer viewer;
+
+Mat J0_global, J1_global, J2_global;
+Mat J0, J1, J2, K3, K2, K1;
+
+InvGraph* graph;
+
+int ns, nt, nt_local, nt_ghost, nt_exten, nt_separ, n, n_local, n_exten;
+
+int istart, iend;
+
+IS ist_local, ist_ghost, ist_exten, ist_separ, is_local, is_ghost, is_exten, is_separ, is_origi;
+
+Mat Q, Q1, Q2;
+
+Mat J0_exten, J1_exten, J2_exten, Q_exten, Q1_exten, Q2_exten;
+
+Mat J0_separ, J1_separ, J2_separ, Q_separ, Q1_separ, Q2_separ;
+
+Vec d;
+Mat L;
+IS is_direct;
+
+Mat D;
+Mat II, S;
+
+KSP_exten;
+PC_exten;
+
+InvShellPC* shell;
+KSP ksp;
+PC pc;
+
+pcg64_random_t rng;
+VecScatter scatter;
+Vec x, x_scatter, x_separ, z, y, w;
+int n_local_global;
+
+Vec d_origi, d_global;
+const int* is_array;
+double* d_array;
+
+Mat Q_full, M1, M2, M3;
+
+int n_full, n_local_full;
+Vec e, s;
+KSP ksp_full;
+PC pc_full;
+
+double sigma_intercept;
+double* s_array;

@@ -92,16 +92,12 @@ int main(int argc, char **argv){
     PetscViewerBinaryOpen(PETSC_COMM_SELF, "data/K3", FILE_MODE_READ, &viewer);
     MatLoad(K3, viewer);
 
-    MPI_Barrier(MPI_COMM_WORLD);
-
 
     /* Load and partition a temporal graph */
     InvGraph* graph = InvGraphCreate("data/J2", verbose);
     InvGraphPartition(graph, size, verbose);
     InvGraphNeighbor(graph, n_neighbor, verbose);
     // InvGraphPrint(graph, verbose);
-
-    MPI_Barrier(MPI_COMM_WORLD);
 
 
     /* Get dimensions */
@@ -294,7 +290,8 @@ int main(int argc, char **argv){
         
         /* Correct */
         MatMult(Q_separ, x_separ, y);
-        KSPSolve(ksp_exten, y, w);
+        MatSolve(L, y, w);
+        // KSPSolve(ksp_exten, y, w);  /* No need for solve with KSP, can use MatSolve(L) instead... */
         VecPointwiseMult(w, w, w);
         VecAXPY(d, 1.0/n_sample, w);
         VecRestoreSubVector(x_scatter, is_separ, &x_separ);
