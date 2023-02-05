@@ -125,10 +125,10 @@ void InvGraphPartition(InvGraph* graph, int n_part, int verbose){
     } else if(n_part <= size){
         int n_con = 1, objval = 0;
         if(verbose) printf("%sPartitioning a graph..\n", INV_GRAPH_VERBOSE);
-        METIS_PartGraphRecursive(&graph->n_vert, &n_con, graph->xadj, graph->yadj, NULL, NULL, NULL, &n_part, NULL, NULL, NULL, &objval, graph->part);
+        // METIS_PartGraphRecursive(&graph->n_vert, &n_con, graph->xadj, graph->yadj, NULL, NULL, NULL, &n_part, NULL, NULL, NULL, &objval, graph->part);
         MPI_Barrier(MPI_COMM_WORLD);
         if(verbose) printf("sukasukasukasukasukasukasukasukasukasukasukasukasukasukasukasukasukasukasukasukasuka\n\n");
-        // METIS_PartGraphKway(&graph->n_vert, &n_con, graph->xadj, graph->yadj, NULL, NULL, NULL, &n_part, NULL, NULL, NULL, &objval, graph->part);
+        METIS_PartGraphKway(&graph->n_vert, &n_con, graph->xadj, graph->yadj, NULL, NULL, NULL, &n_part, NULL, NULL, NULL, &objval, graph->part);
         MPI_Barrier(MPI_COMM_WORLD);
         if(verbose) printf("blyatblyatblyatblyatblyatblyatblyatblyatblyatblyatblyatblyatblyatblyatblyatblyatblyat\n\n");
         int j = 0;
