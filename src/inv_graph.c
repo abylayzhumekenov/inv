@@ -122,6 +122,10 @@ void InvGraphPartition(InvGraph* graph, int n_part, int verbose){
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     if(n_part == 1){
         if(verbose) printf("%sPartitioning aborted. Only one partition.\n", INV_GRAPH_VERBOSE);
+        graph->offset[1] = graph->n_vert;
+        graph->offset[2] = 0;
+        graph->offset[3] = graph->n_vert;
+        graph->n_part = n_part;
     } else if(n_part <= size){
         int n_con = 1, objval = 0;
         if(verbose) printf("%sPartitioning a graph..\n", INV_GRAPH_VERBOSE);
