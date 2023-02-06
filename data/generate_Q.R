@@ -109,9 +109,9 @@ write_petsc_mat(K.2, "K2")
 write_petsc_mat(K.3, "K3")
 
 # save (fake) observations
-n.st = nrow(Q.st)
 n.t = m.t
-n.s = n.st / n.t
+n.s = nrow(K.3)
+n.st = n.s + n.t
 y = rep(1:n.t, each=n.s)
 write_petsc_vec(y, "y")
 
