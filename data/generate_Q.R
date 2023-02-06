@@ -11,7 +11,7 @@ library(INLA)
 set.seed(100)
 
 # function to write in binary
-write_petsc = function(Q, filename){
+write_petsc_mat = function(Q, filename){
     # encode the matrix
     Q = as(Q, "generalMatrix")
     x = list(classid = 1211216,
@@ -31,6 +31,20 @@ write_petsc = function(Q, filename){
     writeBin(object = as.integer(x$nnz_row), con = fwrite, size = 4, endian = "swap")
     writeBin(object = as.integer(x$nnz_i), con = fwrite, size = 4, endian = "swap")
     writeBin(object = as.double(x$nnz_val), con = fwrite, size = 8, endian = "swap")
+    close(con = fwrite)
+}
+
+write_petsc_vec = function(y, filename){
+    # encode the matrix
+    x = list(classid = 1211214,
+             nrows = length(y),
+             val = drop(y))
+    
+    # write the binary data
+    fwrite = file(filename, "wb")
+    writeBin(object = as.integer(x$classid), con = fwrite, size = 4, endian = "swap")
+    writeBin(object = as.integer(x$nrows), con = fwrite, size = 4, endian = "swap")
+    writeBin(object = as.double(x$val), con = fwrite, size = 8, endian = "swap")
     close(con = fwrite)
 }
 
@@ -87,18 +101,22 @@ K.2 = gamma.s^4 * fem.s$c0 + 2*gamma.s^2 * fem.s$g1 + fem.s$g2
 K.3 = gamma.s^6 * fem.s$c0 + 3*gamma.s^4 * fem.s$g1 + 3*gamma.s^2 * fem.s$g2 + fem.s$g3
 
 # save matrices
-write_petsc(J.0*gamma.e^2, "J0")
-write_petsc(J.1*gamma.e^2*2*gamma.t, "J1")
-write_petsc(J.2*gamma.e^2*gamma.t^2, "J2")
-write_petsc(K.1, "K1")
-write_petsc(K.2, "K2")
-write_petsc(K.3, "K3")
+write_petsc_mat(J.0*gamma.e^2, "J0")
+write_petsc_mat(J.1*gamma.e^2*2*gamma.t, "J1")
+write_petsc_mat(J.2*gamma.e^2*gamma.t^2, "J2")
+write_petsc_mat(K.1, "K1")
+write_petsc_mat(K.2, "K2")
+write_petsc_mat(K.3, "K3")
+
+# save (fake) observations
+n.st = nrow(Q.st)
+n.t = m.t
+n.s = n.st / n.t
+y = rep(1:n.t, each=n.s)
+write_petsc_vec(y, "y")
 
 # # spatio-temporal precision
 # Q.st = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*2*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
-# n.st = nrow(Q.st)
-# n.t = m.t
-# n.s = n.st / n.t
 # 
 # # fixed effects precision
 # n.beta = 1

@@ -30,9 +30,11 @@ Program options:
 * `-ns` number of samples
 * `-nn` number of neighbors
 * `-nmax` max number of iterations
+* `-sel` selected inversion
+* `-tauy` precision for observations
+* `-taub` precision for fixed effects
 * `-v` verbose
 * `-vs` separate verbose for sampling phase
-* `-tau` precision for observations
 
 ## Input and output
 
@@ -44,6 +46,6 @@ Run `Rscript generate_Q.R` from inside the `data` folder to generate precision m
 
 This will generate the precision matrices `J.0`, `J.1`, `J.2`, `K.3`, `K.2`, `K.1` and observations `y`
 
-The output will be written as a binary vector `out`, where the first 64 bits (PETSc header) can be ignored
+The output will be written as binary vectors `d` (variance) and `mu` (mean), where the first 64 bits (PETSc header) can be ignored
 
-Note that on linux machines PETSc uses a swapped endian, this must be taken into account when reading the solution `out`
+Note that on linux machines PETSc uses a swapped endian, this must be taken into account when reading `d` and `mu`

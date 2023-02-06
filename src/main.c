@@ -18,7 +18,7 @@ int main(int argc, char **argv){
 
     /* Set parameters from the options */
     int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, selected = 1;
-    double tau = 1e-5;
+    double tau_y = 1e-5, tau_b = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
             n_sample = atoi(argv[i+1]);
@@ -32,8 +32,10 @@ int main(int argc, char **argv){
             verbose_s = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-sel")){
             selected = atoi(argv[i+1]);
-        } else if(!strcmp(argv[i], "-tau")){
-            tau = atof(argv[i+1]);
+        } else if(!strcmp(argv[i], "-tauy")){
+            tau_y = atof(argv[i+1]);
+        } else if(!strcmp(argv[i], "-taub")){
+            tau_b = atof(argv[i+1]);
         }
         argv[i] = 0;
     }
@@ -154,7 +156,7 @@ int main(int argc, char **argv){
     MatAXPY(QQ, 1.0, QQ1, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(QQ, 1.0, QQ2, DIFFERENT_NONZERO_PATTERN);
     MatGetOwnershipRange(QQ, &istart, &iend);
-    for(int i=istart; i<iend; i++) MatSetValue(QQ, i, i, tau, ADD_VALUES);
+    for(int i=istart; i<iend; i++) MatSetValue(QQ, i, i, tau_y, ADD_VALUES);
     MatAssemblyBegin(QQ, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(QQ, MAT_FINAL_ASSEMBLY);
 
@@ -171,7 +173,7 @@ int main(int argc, char **argv){
     MatAXPY(Q_exten, 1.0, Q1_exten, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Q_exten, 1.0, Q2_exten, DIFFERENT_NONZERO_PATTERN);
     MatGetOwnershipRange(Q_exten, &istart, &iend);
-    for(int i=istart; i<iend; i++) MatSetValue(Q_exten, i, i, tau, ADD_VALUES);
+    for(int i=istart; i<iend; i++) MatSetValue(Q_exten, i, i, tau_y, ADD_VALUES);
     MatAssemblyBegin(Q_exten, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Q_exten, MAT_FINAL_ASSEMBLY);
 
@@ -194,7 +196,7 @@ int main(int argc, char **argv){
     /* Assemble the precision matrix with an intercept block */
     if(verbose) printf("\tAssembling the matrix with covariates...\n");
     Mat QQQ, QQ_ub, QQ_bu, QQ_bb;
-    MatConcatenateIntercept(QQ, &QQQ, 1e-5);
+    MatConcatenateIntercept(QQ, &QQQ, tau_y, tau_b);
     MatNestGetSubMat(QQQ, 0, 1, &QQ_ub);
     MatNestGetSubMat(QQQ, 1, 0, &QQ_bu);
     MatNestGetSubMat(QQQ, 1, 1, &QQ_bb);
@@ -302,14 +304,14 @@ int main(int argc, char **argv){
     if(verbose) printf("\tSetting up vectors...\n");
     pcg64_random_t rng = InvRandomCreate(0, 0, 1);
     VecScatter scatter;
-    Vec x, x_scatter, x_separ, z, y, w;
+    Vec x, x_scatter, x_separ, z, v, w;
     int n_local_global;
     MatGetLocalSize(QQ, &n_local_global, &n_local_global);
     VecCreateMPI(PETSC_COMM_WORLD, n_local_global, PETSC_DETERMINE, &x);
     VecDuplicate(x, &z);
     VecScatterCreateToAll(x, &scatter, &x_scatter);
-    VecCreateSeq(PETSC_COMM_SELF, n_exten, &y);
-    VecDuplicate(y, &w);
+    VecCreateSeq(PETSC_COMM_SELF, n_exten, &v);
+    VecDuplicate(v, &w);
 
 
     /* Sampling correction */
@@ -326,9 +328,9 @@ int main(int argc, char **argv){
         VecGetSubVector(x_scatter, is_separ, &x_separ);
         
         /* Correct */
-        MatMult(Q_separ, x_separ, y);
+        MatMult(Q_separ, x_separ, v);
         // MatSolve(L, y, w);
-        KSPSolve(ksp_correction, y, w);  /* No need for solve with KSP, can use MatSolve(L) instead... */
+        KSPSolve(ksp_correction, v, w);  /* No need for solve with KSP, can use MatSolve(L) instead... */
         VecPointwiseMult(w, w, w);
         VecAXPY(d, 1.0/n_sample, w);
         VecRestoreSubVector(x_scatter, is_separ, &x_separ);
@@ -339,22 +341,6 @@ int main(int argc, char **argv){
     /* -------------------- COVARIATES CORRECTION PHASE --------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nCOVARIATES CORRECTION PHASE\n");
-
-
-    /* Setting up vectors */
-    if(verbose) printf("\tSetting up vectors...\n");
-    Vec d_local, d_global;
-    const int* is_array;
-    double* d_array;
-    VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, n, &d_global);
-    VecGetSubVector(d, is_local2, &d_local);
-    ISGetIndices(is_local, &is_array);
-    VecGetArray(d_local, &d_array);
-    for(int i=0; i<n_local; i++) VecSetValue(d_global, is_array[i], d_array[i], INSERT_VALUES);
-    VecAssemblyBegin(d_global);
-    VecAssemblyEnd(d_global);
-    ISRestoreIndices(is_local2, &is_array);
-    VecRestoreArray(d_local, &d_array);
 
 
     /* Create a solver for covariates correction */
@@ -380,34 +366,79 @@ int main(int argc, char **argv){
     PCFieldSplitSetSchurFactType(pc_full, PC_FIELDSPLIT_SCHUR_FACT_DIAG);
     KSPSetTolerances(ksp_full, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
     KSPSetUp(ksp_full);
-    KSPSolve(ksp_full, e, s);
 
 
-    /* Assemble the estimate conditioned on the intercept */
-    if(verbose) printf("\tAssembling the final solution...\n");
+    /* Solve and compute correction */
+    if(verbose) printf("\tSolving and computing the correction...\n");
     double sigma_intercept;
-    double* s_array;
+    KSPSolve(ksp_full, e, s);
     VecPointwiseMult(e, s, e);
     VecPointwiseMult(s, s, s);
     VecSum(e, &sigma_intercept);
     VecScale(s, 1.0/sigma_intercept);
-    VecGetArray(d_global, &d_array);
-    VecGetArray(s, &s_array);
-    for(int i=0; i<n_local_global; i++) s_array[i] += d_array[i];
-    VecRestoreArray(d_global, &d_array);
-    VecRestoreArray(s, &s_array);
+
+
+    /* Assemble the estimate conditioned on the intercept */
+    if(verbose) printf("\tAssembling the approximation for the diagonal...\n");
+    Vec d_local, d_global;
+    const int* is_array;
+    double* d_array;
+    VecCreateMPI(PETSC_COMM_WORLD, n_local_full, PETSC_DETERMINE, &d_global);
+    VecGetSubVector(d, is_local2, &d_local);
+    ISGetIndices(is_local, &is_array);
+    VecGetArray(d_local, &d_array);
+    for(int i=0; i<n_local; i++) VecSetValue(d_global, is_array[i], d_array[i], INSERT_VALUES);
+    VecAssemblyBegin(d_global);
+    VecAssemblyEnd(d_global);
+    ISRestoreIndices(is_local2, &is_array);
+    VecRestoreArray(d_local, &d_array);
+    VecAXPY(d_global, 1.0, s);
+
+
+    /* ---------------------------------------------------------------- */
+    /* -------------------- SOLVING FOR THE MEAN ---------------------- */
+    /* ---------------------------------------------------------------- */
+    if(verbose) printf("\nSOLVING FOR THE MEAN\n");
+
+
+    /* Load the data */
+    if(verbose) printf("\tLoading the data...\n");
+    Vec y, b, mu;
+    double* y_array;
+    double y_sum;
+    VecDuplicate(s, &b);
+    VecDuplicate(s, &mu);
+    VecCreate(PETSC_COMM_SELF, &y);
+    if(!rank){
+        PetscViewerBinaryOpen(PETSC_COMM_SELF, "data/y", FILE_MODE_READ, &viewer);
+        VecLoad(y, viewer);
+        VecSum(y, &y_sum);
+        VecGetArray(y, &y_array);
+        for(int i=0; i<n; i++) VecSetValue(b, i, tau_y*y_array[i], INSERT_VALUES);
+        VecSetValue(b, n_full-1, tau_y*y_sum, INSERT_VALUES);
+        VecRestoreArray(y, &y_array);
+    }
+    VecAssemblyBegin(b);
+    VecAssemblyEnd(b);
+
+
+    /* Solve for the mean */
+    if(verbose) printf("\tSolving a system...\n");
+    KSPSolve(ksp_full, b, mu);
 
 
     /* ---------------------------------------------------------------- */
     /* -------------------- FINALIZATION PHASE ------------------------ */
     /* ---------------------------------------------------------------- */
-    if(verbose) printf("\nFINALIZATION PHASE...\n");
+    if(verbose) printf("\nFINALIZATION PHASE\n");
 
 
     /* Save the output */
     if(verbose) printf("\tSaving results...\n");
-    PetscViewerBinaryOpen(PETSC_COMM_WORLD, "data/out", FILE_MODE_WRITE, &viewer);
-    VecView(s, viewer);
+    PetscViewerBinaryOpen(PETSC_COMM_WORLD, "data/d", FILE_MODE_WRITE, &viewer);
+    VecView(d_global, viewer);
+    PetscViewerBinaryOpen(PETSC_COMM_WORLD, "data/mu", FILE_MODE_WRITE, &viewer);
+    VecView(mu, viewer);
 
 
     /* Clean up */
@@ -449,10 +480,13 @@ int main(int argc, char **argv){
     VecDestroy(&x_scatter);
     // VecDestroy(&x_separ);
     VecDestroy(&z);
-    VecDestroy(&y);
+    VecDestroy(&v);
     VecDestroy(&w);
     VecDestroy(&e);
     VecDestroy(&s);
+    VecDestroy(&y);
+    VecDestroy(&b);
+    VecDestroy(&mu);
 
     ISDestroy(&ist_local);
     ISDestroy(&ist_ghost);

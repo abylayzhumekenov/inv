@@ -23,7 +23,7 @@ PetscErrorCode MatMPIAIJKron(Mat A, Mat B, Mat* C){
 }
 
 
-PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau){
+PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau_y, double tau_b){
     
     int rank, size, last;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
@@ -41,9 +41,9 @@ PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau){
 
     int istart, iend;
     MatGetOwnershipRange(Q0, &istart, &iend);
-    for(int i=0; i<n_local; i++) MatSetValue(M1, i, 0, tau, INSERT_VALUES);
-    if(last) { for(int i=0; i<n; i++) MatSetValue(M2, 0, i, tau, INSERT_VALUES); }
-    if(last) MatSetValue(M3, 0, 0, tau*(n+1), INSERT_VALUES);
+    for(int i=0; i<n_local; i++) MatSetValue(M1, i, 0, tau_y, INSERT_VALUES);
+    if(last) { for(int i=0; i<n; i++) MatSetValue(M2, 0, i, tau_y, INSERT_VALUES); }
+    if(last) MatSetValue(M3, 0, 0, n*tau_y+tau_b, INSERT_VALUES);
     MatAssemblyBegin(M1, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(M1, MAT_FINAL_ASSEMBLY);
     MatAssemblyBegin(M2, MAT_FINAL_ASSEMBLY);

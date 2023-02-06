@@ -23,7 +23,7 @@ PetscErrorCode MatMPIAIJKron(Mat A, Mat B, Mat* C);
  * @param Q_full 
  * @return PetscErrorCode 
  */
-PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau);
+PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau_y, double tau_b);
 
 
 #endif
