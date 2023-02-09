@@ -17,8 +17,9 @@ int main(int argc, char **argv){
 
 
     /* Set parameters from the options */
-    int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, selected = 1;
+    int max_niter = 1000, n_sample = 100, n_neighbor = 1, selected = 1, verbose = 0, verbose_s = 0, profile = 0;
     double tau_y = 1e-5, tau_b = 1e-5;
+    double t_start = 0, t_end = 0, mem_start = 0, mem_end = 0;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
             n_sample = atoi(argv[i+1]);
@@ -26,16 +27,18 @@ int main(int argc, char **argv){
             max_niter = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-nn")){
             n_neighbor = atoi(argv[i+1]);
-        } else if(!strcmp(argv[i], "-v")){
-            verbose = atoi(argv[i+1]);
-        } else if(!strcmp(argv[i], "-vs")){
-            verbose_s = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-sel")){
             selected = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-tauy")){
             tau_y = atof(argv[i+1]);
         } else if(!strcmp(argv[i], "-taub")){
             tau_b = atof(argv[i+1]);
+        } else if(!strcmp(argv[i], "-v")){
+            verbose = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-vs")){
+            verbose_s = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-prof")){
+            profile = atoi(argv[i+1]);
         }
         argv[i] = 0;
     }
@@ -48,11 +51,14 @@ int main(int argc, char **argv){
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     PetscInitialize(&argc, &argv, NULL, NULL);
     verbose = (!rank) && verbose;
+    profile = (!rank) && profile;
 
     /* ---------------------------------------------------------------- */
     /* -------------------- PREPARATORY PHASE ------------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nPREPARATORY PHASE\n");
+    if(profile) PetscTime(&t_start);
+    if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
 
     /* Load the matrices */
@@ -140,10 +146,19 @@ int main(int argc, char **argv){
     ISCreateStride(PETSC_COMM_SELF, n_local, 0, 1, &is_local2);
 
 
+    /* Profiling checkpoint */
+    if(profile) PetscTime(&t_end);
+    if(profile) PetscMallocGetCurrentUsage(&mem_end);
+    if(verbose) printf("\tTime spent:\t\t%f sec\n", t_end - t_start);
+    if(verbose) printf("\tMemory allocated:\t%f bytes\n", mem_end - mem_start);
+
+
     /* ---------------------------------------------------------------- */
     /* -------------------- MATRIX ASSEMBLY PHASE --------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nMATRIX ASSEMBLY PHASE\n");
+    if(profile) PetscTime(&t_start);
+    if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
 
     /* Assemble the global MPI matrix */
@@ -202,10 +217,19 @@ int main(int argc, char **argv){
     MatNestGetSubMat(QQQ, 1, 1, &QQ_bb);
 
 
+    /* Profiling checkpoint */
+    if(profile) PetscTime(&t_end);
+    if(profile) PetscMallocGetCurrentUsage(&mem_end);
+    if(verbose) printf("\tTime spent:\t\t%f sec\n", t_end - t_start);
+    if(verbose) printf("\tMemory allocated:\t%f bytes\n", mem_end - mem_start);
+
+
     /* ---------------------------------------------------------------- */
     /* -------------------- DIRECT SOLVE PHASE ------------------------ */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nDIRECT SOLVE PHASE\n");
+    if(profile) PetscTime(&t_start);
+    if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
 
     /* Factor the extended matrix */
@@ -254,10 +278,19 @@ int main(int argc, char **argv){
     }
 
 
+    /* Profiling checkpoint */
+    if(profile) PetscTime(&t_end);
+    if(profile) PetscMallocGetCurrentUsage(&mem_end);
+    if(verbose) printf("\tTime spent:\t\t%f sec\n", t_end - t_start);
+    if(verbose) printf("\tMemory allocated:\t%f bytes\n", mem_end - mem_start);
+
+
     /* ---------------------------------------------------------------- */
     /* -------------------- SAMPLING CORRECTION PHASE ----------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nSAMPLING CORRECTION PHASE\n");
+    if(profile) PetscTime(&t_start);
+    if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
 
     /* Create a solver for sampling */
@@ -337,10 +370,19 @@ int main(int argc, char **argv){
     }
 
 
+    /* Profiling checkpoint */
+    if(profile) PetscTime(&t_end);
+    if(profile) PetscMallocGetCurrentUsage(&mem_end);
+    if(verbose) printf("\tTime spent:\t\t%f sec\n", t_end - t_start);
+    if(verbose) printf("\tMemory allocated:\t%f bytes\n", mem_end - mem_start);
+
+
     /* ---------------------------------------------------------------- */
     /* -------------------- COVARIATES CORRECTION PHASE --------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nCOVARIATES CORRECTION PHASE\n");
+    if(profile) PetscTime(&t_start);
+    if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
 
     /* Create a solver for covariates correction */
@@ -395,10 +437,19 @@ int main(int argc, char **argv){
     VecAXPY(d_global, 1.0, s);
 
 
+    /* Profiling checkpoint */
+    if(profile) PetscTime(&t_end);
+    if(profile) PetscMallocGetCurrentUsage(&mem_end);
+    if(verbose) printf("\tTime spent:\t\t%f sec\n", t_end - t_start);
+    if(verbose) printf("\tMemory allocated:\t%f bytes\n", mem_end - mem_start);
+
+
     /* ---------------------------------------------------------------- */
     /* -------------------- SOLVING FOR THE MEAN ---------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nSOLVING FOR THE MEAN\n");
+    if(profile) PetscTime(&t_start);
+    if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
 
     /* Load the data */
@@ -425,6 +476,13 @@ int main(int argc, char **argv){
     /* Solve for the mean */
     if(verbose) printf("\tSolving a system...\n");
     KSPSolve(ksp_full, b, mu);
+
+
+    /* Profiling checkpoint */
+    if(profile) PetscTime(&t_end);
+    if(profile) PetscMallocGetCurrentUsage(&mem_end);
+    if(verbose) printf("\tTime spent:\t\t%f sec\n", t_end - t_start);
+    if(verbose) printf("\tMemory allocated:\t%f bytes\n", mem_end - mem_start);
 
 
     /* ---------------------------------------------------------------- */
