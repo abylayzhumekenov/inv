@@ -1,19 +1,29 @@
 # inv
 
-C program for selected inversion of sparse precision matrices in latent Gaussian models
+C program for selected inversion of sparse precision matrices in latent Gaussian models.
 
-The latent Gaussian model are hierarchical Bayesian models
+The latent Gaussian model are hierarchical Bayesian models. In our case, we solve the Gaussian problem with fixed hyperparameters:
 
 $$
-    something
+\begin{aligned}
+    y|x,\theta &\sim \mathcal{N}(Ax,Q_y^{-1}) \\
+    x|\theta &\sim \mathcal{N}(0,Q_x^{-1}) \\
+    \theta &= \theta_0 (\text{fixed})
+\end{aligned}
 $$
+
+The posterior mean and marginal variances are
+
+$$
+    \mu = Q^{-1}b \quad\text{and}\quad \text{diag}\Sigma = \text{diag}Q^{-1}
+$$
+
+where $Q=Q_x+A^TQ_yA$ is a sparse posterior precision matrix.
 
 
 ## Compile
 
-Compile by running `make` in the project directory
-
-Run `make server` to compile on a server and `make cluster` to compile on Ibex cluster
+Compile by running `make` in the project directory, run `make server` to compile on a server or Ibex cluster.
 
 ## Dependencies
 
@@ -40,6 +50,7 @@ Program options:
 * `-taub` precision for fixed effects
 * `-v` verbose
 * `-vs` separate verbose for sampling phase
+* `-prof` basic time and memory profiling
 
 ## Input and output
 
