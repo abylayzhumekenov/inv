@@ -1,8 +1,13 @@
 # inv
 
-C program for sparse matrix inversion
+C program for selected inversion of sparse precision matrices in latent Gaussian models
 
-Currently computes only the diagonal of the inverse
+The latent Gaussian model are hierarchical Bayesian models
+
+$$
+    something
+$$
+
 
 ## Compile
 
