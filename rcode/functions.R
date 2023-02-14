@@ -23,6 +23,7 @@ wdatf <- function(year, dpath, vnam, verbose=TRUE) {
     } 
     wdfl <- file.path(dpath, paste0(vnam, 'wd', year, 'US.RData'))
     if(!file.exists(wdfl)) {
+        fdownload(file.path(dpath, paste0(year, '.csv.gz')))
         t0 <- Sys.time()
         if(verbose) 
             cat('reading data from year', year, '\n')
