@@ -143,17 +143,18 @@ A.b = Matrix(matrix(1, n.obs, 1), sparse = TRUE)
 A.b[id.na,] = NA
 
 # save matrices
-write_petsc_mat(J.0*gamma.e^2, "J0")
-write_petsc_mat(J.1*gamma.e^2*2*gamma.t, "J1")
-write_petsc_mat(J.2*gamma.e^2*gamma.t^2, "J2")
-write_petsc_mat(K.1, "K1")
-write_petsc_mat(K.2, "K2")
-write_petsc_mat(K.3, "K3")
-write_petsc_mat(A.t*sqrt(tau_y), "At")
-write_petsc_mat(A.s, "As")
-write_petsc_mat(A.b*sqrt(tau_y), "Ab")
-write_petsc_vec(y*sqrt(tau_y), "y")
-write_petsc_is(id.na, "isna")
+path = "../../data/"
+write_petsc_mat(J.0*gamma.e^2, paste0(path,"J0"))
+write_petsc_mat(J.1*gamma.e^2*2*gamma.t, paste0(path,"J1"))
+write_petsc_mat(J.2*gamma.e^2*gamma.t^2, paste0(path,"J2"))
+write_petsc_mat(K.1, paste0(path,"K1"))
+write_petsc_mat(K.2, paste0(path,"K2"))
+write_petsc_mat(K.3, paste0(path,"K3"))
+write_petsc_mat(A.t*sqrt(tau_y), paste0(path,"At"))
+write_petsc_mat(A.s, paste0(path,"As"))
+write_petsc_mat(A.b*sqrt(tau_y), paste0(path,"Ab"))
+write_petsc_vec(y*sqrt(tau_y), paste0(path,"y"))
+write_petsc_is(id.na, paste0(path,"isna"))
 
 # # spatio-temporal precision
 # Q.st = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*2*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
