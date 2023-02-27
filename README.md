@@ -27,7 +27,7 @@ Compile by running `make` in the project directory, run `make server` to compile
 
 ## Dependencies
 
-* petsc (configure with `--download-mumps --download-scalapack`)
+* petsc (configure with `--download-mumps --download-scalapack --download-metis --download-parmetis`)
 * mpi (loaded with petsc)
 * metis (can use the one shipped with petsc)
 * gklib (if you build metis yourself)
@@ -44,23 +44,23 @@ MPI options:
 Program options:
 * `-ns` number of samples
 * `-nn` number of neighbors
-* `-nmax` max number of iterations
-* `-sel` selected inversion
+* `-ni` max number of Krylov iterations
 * `-tauy` precision for observations
 * `-taub` precision for fixed effects
 * `-v` verbose
-* `-vs` separate verbose for sampling phase
-* `-prof` basic time and memory profiling
+* `-p` basic time and memory profiling
 
 ## Input and output
 
-Run `Rscript generate_Q.R` from inside the `data` folder to generate precision matrices with parameters
+Run `Rscript generate.R` from inside the `rscript/simulation` folder to generate precision matrices for simulated example, or from `rscript/application` folder to generate them for application to US temperature data. For the simulation, the hyperparameters can be set through command line options as:
 
 * `-ms` space resolution
 * `-mt` time resolution
+* `-rs` space range
 * `-rt` time range
+* `-ss` marginal variance
 
-This will generate the precision matrices `J.0`, `J.1`, `J.2`, `K.3`, `K.2`, `K.1` and observations `y`
+This will generate the precision matrices `J.0`, `J.1`, `J.2`, `K.3`, `K.2`, `K.1`, projection matrices `A.t`, `A.s`, covariates `A.b` and observations `y`
 
 The output will be written as binary vectors `d` (variance) and `mu` (mean), where the first 64 bits (PETSc header) can be ignored
 

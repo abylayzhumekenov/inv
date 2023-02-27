@@ -7,9 +7,9 @@
 /**
  * @brief Create a random number generator
  * 
- * @param reproducible 
  * @param initstate 
  * @param initseq 
+ * @param unique 
  * @return pcg64_random_t 
  */
 pcg64_random_t InvRandomCreate(pcg128_t initstate, pcg128_t initseq, int unique);

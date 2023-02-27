@@ -17,25 +17,23 @@ int main(int argc, char **argv){
 
 
     /* Set parameters from the options */
-    int max_niter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, verbose_s = 0, profile = 0;
+    int n_iter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, profile = 0;
     double tau_y = 1e-5, tau_b = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
             n_sample = atoi(argv[i+1]);
-        } else if(!strcmp(argv[i], "-nmax")){
-            max_niter = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-ni")){
+            n_iter = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-nn")){
             n_neighbor = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-v")){
+            verbose = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-p")){
+            profile = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-tauy")){
             tau_y = atof(argv[i+1]);
         } else if(!strcmp(argv[i], "-taub")){
             tau_b = atof(argv[i+1]);
-        } else if(!strcmp(argv[i], "-v")){
-            verbose = atoi(argv[i+1]);
-        } else if(!strcmp(argv[i], "-vs")){
-            verbose_s = atoi(argv[i+1]);
-        } else if(!strcmp(argv[i], "-prof")){
-            profile = atoi(argv[i+1]);
         }
         argv[i] = 0;
     }
@@ -347,7 +345,7 @@ int main(int argc, char **argv){
     PC pc_sampling;
     KSPCreate(PETSC_COMM_WORLD, &ksp_sampling);
     KSPSetOperators(ksp_sampling, Quu, Quu);
-    KSPSetTolerances(ksp_sampling, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, max_niter);
+    KSPSetTolerances(ksp_sampling, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetComputeEigenvalues(ksp_sampling, PETSC_TRUE);
     KSPSetPCSide(ksp_sampling, PC_SYMMETRIC);
     KSPGetPC(ksp_sampling, &pc_sampling);
@@ -376,7 +374,7 @@ int main(int argc, char **argv){
     KSPGetPC(ksp_correction, &pc_correction);
     PCSetType(pc_correction, PCBJACOBI);
     PCSetFromOptions(pc_correction);
-    KSPSetTolerances(ksp_correction, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, max_niter);
+    KSPSetTolerances(ksp_correction, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetFromOptions(ksp_correction);
 
 
@@ -389,7 +387,7 @@ int main(int argc, char **argv){
     KSPGetPC(ksp_covariates, &pc_covariates);
     PCSetType(pc_covariates, PCBJACOBI);
     PCSetFromOptions(pc_covariates);
-    KSPSetTolerances(ksp_covariates, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, max_niter);
+    KSPSetTolerances(ksp_covariates, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetFromOptions(ksp_covariates);
 
 
@@ -427,8 +425,8 @@ int main(int argc, char **argv){
     for(int i=0; i<n_sample; i++){
 
         /* Sampling */
-        InvSamplerStdNormal(&rng, &z, verbose_s);
-        InvSamplerGMRF(ksp_sampling, z, &x, verbose_s);
+        InvSamplerStdNormal(&rng, &z);
+        InvSamplerGMRF(ksp_sampling, z, &x);
 
         /* Share the sample */
         VecScatterBegin(scatter, x, x_separ, INSERT_VALUES, SCATTER_FORWARD);
