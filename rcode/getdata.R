@@ -1,5 +1,7 @@
 library(data.table)
 library(parallel)
+options(timeout = 1000)
+ncores = 1
 
 source("functions.R")
 
@@ -18,14 +20,14 @@ source("stations.R")
 ### select the data
 system.time(mclapply(
     sort(years), wdatf, dpath = dpath, vnam = "TMAX", verbose=TRUE,
-    mc.cores=min(4, length(years), detectCores())))
+    mc.cores=min(ncores, length(years), detectCores())))
 
 ### read each year data, select stations with at least 200 obs days
 lwdat <- mclapply(sort(years), function(y) {
     wdfl <- file.path(dpath, paste0('TMAXwd', y, 'US.RData'))
     load(wdfl)    
     return(dat[which(rowSums(!is.na(dat))>200),])
-}, mc.cores=min(4, length(years), detectCores()))
+}, mc.cores=min(ncores, length(years), detectCores()))
 
 sapply(lwdat, dim)
 

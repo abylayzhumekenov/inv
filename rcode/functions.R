@@ -54,7 +54,7 @@ wdatf <- function(year, dpath, vnam, verbose=TRUE) {
         t3 <- Sys.time()
         if(verbose) {
             cat('year', year, 'reshape', dim(dat[, -1]), 'obs. ')
-            print(t3-t2, '\n')
+            print(t3-t2)
         }
         if(is.character(dat[,1])) {
             rownames(dat) <- dat[,1]

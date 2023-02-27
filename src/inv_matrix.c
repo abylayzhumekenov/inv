@@ -1,70 +1,97 @@
+#include <petsc.h>
+#include <petscblaslapack.h>
+
 #include "inv_matrix.h"
 
 
-PetscErrorCode MatMPIAIJKron(Mat A, Mat B, Mat* C){
+PetscErrorCode MatCreateLoad(MPI_Comm comm, MatType type, PetscInt m, PetscInt n, PetscInt M, PetscInt N, const char filename[], Mat* A){
 
-    int rank;
-    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    int petsc_decide = (m==PETSC_DECIDE && n==PETSC_DECIDE && M==PETSC_DETERMINE && N==PETSC_DETERMINE);
+    PetscViewer viewer;
+    MatCreate(comm, A);
+    MatSetType(*A, type);
+    if(!petsc_decide) MatSetSizes(*A, m, n, M, N);
+    PetscViewerBinaryOpen(comm, filename, FILE_MODE_READ, &viewer);
+    MatLoad(*A, viewer);
 
-    int n_local, n;
-    Mat *A_seq[1], C_seq;
-    IS isrow[1], iscol[1];
-    MatGetOwnershipIS(A, &isrow[0], &iscol[0]);
-    MatCreateSubMatrices(A, 1, isrow, iscol, MAT_INITIAL_MATRIX, A_seq);
+    PetscViewerDestroy(&viewer);
+    return 0;
+}
 
-    MatSeqAIJKron(*A_seq[0], B, MAT_INITIAL_MATRIX, &C_seq);
-    MatGetSize(C_seq, &n_local, &n);
-    MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, C_seq, n_local, MAT_INITIAL_MATRIX, C);
 
-    MatDestroyMatrices(1, A_seq);
-    MatDestroy(&C_seq);
+PetscErrorCode MatGetSizeLoad(const char filename[], int* m, int* n){
+
+    FILE* file = fopen(filename, "rb");
+    unsigned int header[4];
+    fread(header, 4, 4, file);
+    *m = htobe32(header[1]);
+    *n = htobe32(header[2]);
+    fclose(file);
 
     return 0;
 }
 
 
-PetscErrorCode MatConcatenateIntercept(Mat Q0, Mat* Q, double tau_y, double tau_b){
+PetscErrorCode MatCreateSubMatrixSeq(Mat A, IS isrow, IS iscol, Mat* B){
+
+    Mat *BB[1];
+    MatCreateSubMatrices(A, 1, &isrow, &iscol, MAT_INITIAL_MATRIX, BB);
+    *B = *BB[0];
     
-    int rank, size, last;
-    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-    MPI_Comm_size(PETSC_COMM_WORLD, &size);
-    last = (rank==size-1);
+    return 0;
+}
 
-    int n_local, n;
-    MatGetLocalSize(Q0, &n_local, &n_local);
-    MatGetSize(Q0, &n, &n);
 
-    Mat M1, M2, M3, Q1, Q2, Q3;
-    MatCreateSeqAIJ(PETSC_COMM_SELF, n_local, 1, 1, NULL, &M1);
-    MatCreateSeqAIJ(PETSC_COMM_SELF, last, n, n, NULL, &M2);
-    MatCreateSeqAIJ(PETSC_COMM_SELF, last, 1, 1, NULL, &M3);
+PetscErrorCode MatMPIAIJKron(Mat A, Mat B, Mat* C){
 
-    int istart, iend;
-    MatGetOwnershipRange(Q0, &istart, &iend);
-    for(int i=0; i<n_local; i++) MatSetValue(M1, i, 0, tau_y, INSERT_VALUES);
-    if(last) { for(int i=0; i<n; i++) MatSetValue(M2, 0, i, tau_y, INSERT_VALUES); }
-    if(last) MatSetValue(M3, 0, 0, n*tau_y+tau_b, INSERT_VALUES);
-    MatAssemblyBegin(M1, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(M1, MAT_FINAL_ASSEMBLY);
-    MatAssemblyBegin(M2, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(M2, MAT_FINAL_ASSEMBLY);
-    MatAssemblyBegin(M3, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(M3, MAT_FINAL_ASSEMBLY);
+    int nt_local, mt_local, ns, ms;
+    Mat *A_seq[1], C_seq;
+    IS isrow, iscol;
 
-    MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, M1, last, MAT_INITIAL_MATRIX, &Q1);
-    MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, M2, n_local, MAT_INITIAL_MATRIX, &Q2);
-    MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, M3, last, MAT_INITIAL_MATRIX, &Q3);
+    MatGetOwnershipIS(A, &isrow, &iscol);
+    MatCreateSubMatrices(A, 1, &isrow, &iscol, MAT_INITIAL_MATRIX, A_seq);
+    MatSeqAIJKron(*A_seq[0], B, MAT_INITIAL_MATRIX, &C_seq);
+    MatGetSize(*A_seq[0], &nt_local, &mt_local);
+    MatGetSize(B, &ns, &ms);
+    MatCreateMPIMatConcatenateSeqMat(PETSC_COMM_WORLD, C_seq, nt_local*ms, MAT_INITIAL_MATRIX, C);
 
-    Mat QQ[4];
-    QQ[0] = Q0;
-    QQ[1] = Q1;
-    QQ[2] = Q2;
-    QQ[3] = Q3;
-    MatCreateNest(PETSC_COMM_WORLD, 2, NULL, 2, NULL, QQ, Q);
+    MatDestroyMatrices(1, A_seq);
+    MatDestroy(&C_seq);
+    return 0;
+}
 
-    MatDestroy(&M1);
-    MatDestroy(&M2);
-    MatDestroy(&M3);
+
+PetscErrorCode MatDenseInvertLapack(Mat A){
+
+    int rank, size, n;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MatGetLocalSize(A, &n, &n);
+
+    double *a_array, work[n];
+    int i_array[n], info;
+    MatDenseGetArray(A, &a_array);
+    if(rank==size-1){
+        dgetrf_(&n, &n, a_array, &n, i_array, &info);
+        dgetri_(&n, a_array, &n, i_array, work, &n, &info);
+    }
+    MatDenseRestoreArray(A, &a_array);
+
+    return 0;
+}
+
+
+PetscErrorCode MatDensePointwiseMult(Mat A, Mat B){
+
+    double *a_array, *b_array;
+    int n, m;
+    MatGetLocalSize(A, &n, NULL);
+    MatGetSize(A, NULL, &m);
+    MatDenseGetArray(A, &a_array);
+    MatDenseGetArray(B, &b_array);
+    for(int i=0; i<n*m; i++) a_array[i] *= b_array[i];
+    MatDenseRestoreArray(A, &a_array);
+    MatDenseRestoreArray(B, &b_array);
 
     return 0;
 }

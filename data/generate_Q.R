@@ -4,6 +4,8 @@ for(i in seq_along(args)){
 	if(args[i] == "-mt") m.t = as.integer(args[i+1])
 	if(args[i] == "-ms") m.s = as.integer(args[i+1])
 	if(args[i] == "-rt") range.t = as.integer(args[i+1])
+	if(args[i] == "-rs") range.t = as.integer(args[i+1])
+	if(args[i] == "-ss") sigma.sq = as.integer(args[i+1])
 }
 
 # load libraries
@@ -13,9 +15,10 @@ set.seed(100)
 # function to write in binary
 write_petsc_mat = function(Q, filename){
     # encode the matrix
+    Q = t(Q)
     Q = as(Q, "generalMatrix")
     x = list(classid = 1211216,
-             nrows = nrow(Q),
+             nrows = ncol(Q),
              ncols = nrow(Q),
              nnz = length(Q@x),
              nnz_row = diff(Q@p),
@@ -35,7 +38,7 @@ write_petsc_mat = function(Q, filename){
 }
 
 write_petsc_vec = function(y, filename){
-    # encode the matrix
+    # encode the vector
     x = list(classid = 1211214,
              nrows = length(y),
              val = drop(y))
@@ -45,6 +48,20 @@ write_petsc_vec = function(y, filename){
     writeBin(object = as.integer(x$classid), con = fwrite, size = 4, endian = "swap")
     writeBin(object = as.integer(x$nrows), con = fwrite, size = 4, endian = "swap")
     writeBin(object = as.double(x$val), con = fwrite, size = 8, endian = "swap")
+    close(con = fwrite)
+}
+
+write_petsc_is = function(is, filename){
+    # encode the index set
+    x = list(classid = 1211218,
+             nrows = length(is),
+             val = drop(is)-1)
+    
+    # write the binary data
+    fwrite = file(filename, "wb")
+    writeBin(object = as.integer(x$classid), con = fwrite, size = 4, endian = "swap")
+    writeBin(object = as.integer(x$nrows), con = fwrite, size = 4, endian = "swap")
+    writeBin(object = as.integer(x$val), con = fwrite, size = 4, endian = "swap")
     close(con = fwrite)
 }
 
@@ -62,8 +79,8 @@ nu.t = alpha.t - 1/2
 nu.s = alpha.s * nu.t
 
 # set practical range and marginal variance
-sigma.sq = 1
-range.s = 1
+if(!exists(deparse(substitute(sigma.sq)))) sigma.sq = 1
+if(!exists(deparse(substitute(range.s)))) range.s = 1
 if(!exists(deparse(substitute(range.t)))) range.t = 1
 theta = log(c(sigma.sq, range.s, range.t))
 
@@ -100,6 +117,31 @@ K.1 = gamma.s^2 * fem.s$c0 + fem.s$g1
 K.2 = gamma.s^4 * fem.s$c0 + 2*gamma.s^2 * fem.s$g1 + fem.s$g2
 K.3 = gamma.s^6 * fem.s$c0 + 3*gamma.s^4 * fem.s$g1 + 3*gamma.s^2 * fem.s$g2 + fem.s$g3
 
+# set dimensions
+n.t = m.t
+n.s = nrow(K.3)
+n.st = n.s * n.t
+n.b = 1
+n.sobs = n.s - 3
+n.obs = n.sobs * n.t
+n.na = 10
+tau_y = 1e-2
+tau_b = 1e-5
+
+# generate observation indices
+id.sobs = sort(sample(1:n.s, n.sobs))
+id.na = sort(sample(1:n.obs, n.na))
+
+# projection matrices
+A.t = inla.spde.make.A(mesh = mesh.t)
+A.s = inla.spde.make.A(mesh = mesh.s, loc = mesh.s$loc[id.sobs,])
+
+# fake observations
+y = rep(1:n.t, each = n.sobs)
+y[id.na] = NA
+A.b = Matrix(matrix(1, n.obs, 1), sparse = TRUE)
+A.b[id.na,] = NA
+
 # save matrices
 write_petsc_mat(J.0*gamma.e^2, "J0")
 write_petsc_mat(J.1*gamma.e^2*2*gamma.t, "J1")
@@ -107,13 +149,11 @@ write_petsc_mat(J.2*gamma.e^2*gamma.t^2, "J2")
 write_petsc_mat(K.1, "K1")
 write_petsc_mat(K.2, "K2")
 write_petsc_mat(K.3, "K3")
-
-# save (fake) observations
-n.t = m.t
-n.s = nrow(K.3)
-n.st = n.s + n.t
-y = rep(1:n.t, each=n.s)
-write_petsc_vec(y, "y")
+write_petsc_mat(A.t*sqrt(tau_y), "At")
+write_petsc_mat(A.s, "As")
+write_petsc_mat(A.b*sqrt(tau_y), "Ab")
+write_petsc_vec(y*sqrt(tau_y), "y")
+write_petsc_is(id.na, "isna")
 
 # # spatio-temporal precision
 # Q.st = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*2*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
