@@ -23,16 +23,17 @@ where $Q=Q_x+A^TQ_yA$ is a sparse posterior precision matrix.
 
 ## Compile
 
-Compile by running `make` in the project directory, run `make server` to compile on a server or Ibex cluster.
+Compile by running `make` in the project directory. Compilation is the same on PC, server or Ibex cluster.
 
 ## Dependencies
 
 * petsc (configure with `--download-mumps --download-scalapack --download-metis --download-parmetis`)
-* mpi (loaded with petsc)
-* metis (can use the one shipped with petsc)
-* gklib (if you build metis yourself)
-* lapack
 * pcg_random
+* lapack (shipped with petsc)
+* mpi (shipped with petsc)
+* mumps (shipped with petsc)
+* metis (shipped with petsc)
+* gklib (if you build metis yourself)
 
 ## Run with options
 
@@ -52,7 +53,7 @@ Program options:
 
 ## Input and output
 
-Run `Rscript generate.R` from inside the `rscript/simulation` folder to generate precision matrices for simulated example, or from `rscript/application` folder to generate them for application to US temperature data. For the simulation, the hyperparameters can be set through command line options as:
+Run `Rscript generate.R [rscript_options]` from inside the `rscript/simulation` folder to generate precision matrices for simulated example, or from `rscript/application` folder to generate them for application to US temperature data. For the simulation, the hyperparameters can be set through command line options as:
 
 * `-ms` space resolution
 * `-mt` time resolution
