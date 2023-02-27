@@ -18,7 +18,7 @@ int main(int argc, char **argv){
 
     /* Set parameters from the options */
     int n_iter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, profile = 0;
-    double tau_y = 1e-5, tau_b = 1e-5;
+    double tau_y = 1e-2, tau_b = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
             n_sample = atoi(argv[i+1]);
