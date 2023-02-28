@@ -95,7 +95,7 @@ gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.sq)
 # ------------------------------------------------------------------------------
 
 # temporal mesh
-mesh.t = inla.mesh.1d(1:(dim(wdat)[2]))
+mesh.t = inla.mesh.1d(1:(dim(wdat)[2]-1))
 fem.t = inla.mesh.fem(mesh.t, order = 2)
 
 # spatial mesh
