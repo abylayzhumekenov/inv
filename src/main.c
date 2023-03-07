@@ -362,6 +362,10 @@ int main(int argc, char **argv){
     PCShellSetName(pc_sampling, "shell");
     InvShellSetup(pc_sampling, Quu, PETSC_COMM_WORLD);
 
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
+
 
     /* Create a solver for correction */
     if(verbose) printf("\tSetting up a correction solver...\n");
@@ -376,8 +380,13 @@ int main(int argc, char **argv){
     KSPSetTolerances(ksp_correction, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetFromOptions(ksp_correction);
 
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
+
 
     /* Create a solver for covariates */
+    if(verbose) printf("\tSetting up a covariates solver...\n");
     KSP ksp_covariates;
     PC pc_covariates;
     KSPCreate(PETSC_COMM_WORLD, &ksp_covariates);
