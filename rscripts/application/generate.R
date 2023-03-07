@@ -78,9 +78,9 @@ nu.t = alpha.t - 1/2
 nu.s = alpha.s * nu.t
 
 # set practical range and marginal variance
-if(!exists(deparse(substitute(sigma.sq)))) sigma.sq = 1
-if(!exists(deparse(substitute(range.s)))) range.s = 1
-if(!exists(deparse(substitute(range.t)))) range.t = 1
+if(!exists(deparse(substitute(sigma.sq)))) sigma.sq = 4790.409
+if(!exists(deparse(substitute(range.s)))) range.s = 1052.383
+if(!exists(deparse(substitute(range.t)))) range.t = 2
 theta = log(c(sigma.sq, range.s, range.t))
 
 # convert hyperparameters
@@ -136,8 +136,8 @@ A.s = inla.spde.make.A(mesh = mesh.s, loc = loc)
 # observations and covariates
 y = c(as.matrix(wdat[,-1]))
 x0 = rep(1, m.st)
-x1 = rep(sin(2*pi*(1:m.t)/365.25), m.s)
-x2 = rep(cos(2*pi*(1:m.t)/365.25), m.s)
+x1 = rep(sin(2*pi*(1:m.t)/365.25), each = m.s)
+x2 = rep(cos(2*pi*(1:m.t)/365.25), each = m.s)
 x3 = loc[,2]
 id.na = which(is.na(y))
 A.b = Matrix(cbind(x0, x1, x2, x3), sparse=TRUE)

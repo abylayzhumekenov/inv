@@ -3,6 +3,12 @@ library(parallel)
 options(timeout = 1000)
 ncores = 1
 
+# command line arguments
+args = commandArgs(trailingOnly=TRUE)
+for(i in seq_along(args)){
+	if(args[i] == "-ncores") ncores = as.integer(args[i+1])
+}
+
 source("functions.R")
 
 if(!any(ls()=="dpath"))
