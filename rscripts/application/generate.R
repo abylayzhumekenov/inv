@@ -4,6 +4,8 @@ for(i in seq_along(args)){
 	if(args[i] == "-rt") range.t = as.integer(args[i+1])
 	if(args[i] == "-rs") range.t = as.integer(args[i+1])
 	if(args[i] == "-ss") sigma.sq = as.integer(args[i+1])
+	if(args[i] == "-tauy") tau_y = as.double(args[i+1])
+	if(args[i] == "-taub") tau_b = as.double(args[i+1])
 }
 
 # function to write in binary
@@ -78,8 +80,8 @@ nu.t = alpha.t - 1/2
 nu.s = alpha.s * nu.t
 
 # set practical range and marginal variance
-if(!exists(deparse(substitute(sigma.sq)))) sigma.sq = 4790.409
-if(!exists(deparse(substitute(range.s)))) range.s = 1052.383
+if(!exists(deparse(substitute(sigma.sq)))) sigma.sq = 4054.745
+if(!exists(deparse(substitute(range.s)))) range.s = 1500.000
 if(!exists(deparse(substitute(range.t)))) range.t = 2
 theta = log(c(sigma.sq, range.s, range.t))
 
@@ -113,11 +115,11 @@ m.s = dim(wdat)[1]
 n.st = n.t * n.s
 m.st = m.t * m.s
 n.na = sum(is.na(wdat[,-1]))
-n.b = 2
+n.b = 4
 
 # set precisions
-tau_y = 1e-2
-tau_b = 1e-5
+if(!exists(deparse(substitute(tau_y)))) tau_y = 1e-2
+if(!exists(deparse(substitute(tau_b)))) tau_b = 1e-5
 
 # temporal matrices
 J.0 = fem.t$c0
