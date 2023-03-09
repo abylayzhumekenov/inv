@@ -329,44 +329,44 @@ int main(int argc, char **argv){
     if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
 
 
-        /* ---------------------------------------------------------------- */
-        /* ---------------------------- CHECK PURELY DIRECT SOLVE --------- */
-        /* ---------------------------------------------------------------- */
-        if(verbose) printf("\nCHECK PURELY DIRECT SOLVE\n");
-        if(profile) PetscTime(&t_start);
-        if(profile) PetscMallocGetCurrentUsage(&mem_start);
+        // /* ---------------------------------------------------------------- */
+        // /* ---------------------------- CHECK PURELY DIRECT SOLVE --------- */
+        // /* ---------------------------------------------------------------- */
+        // if(verbose) printf("\nCHECK PURELY DIRECT SOLVE\n");
+        // if(profile) PetscTime(&t_start);
+        // if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
-        Mat LL;
-        IS isis;
-        MatSetOption(Quu, MAT_SYMMETRIC, PETSC_TRUE);
-        MatGetOrdering(Quu, MATORDERINGNATURAL, &isis, &isis);
-        MatGetFactor(Quu, MATSOLVERMUMPS, MAT_FACTOR_CHOLESKY, &LL);
-        MatCholeskyFactorSymbolic(LL, Quu, isis, NULL);
-        MatCholeskyFactorNumeric(LL, Quu, NULL);
+        // Mat LL;
+        // IS isis;
+        // MatSetOption(Quu, MAT_SYMMETRIC, PETSC_TRUE);
+        // MatGetOrdering(Quu, MATORDERINGNATURAL, &isis, &isis);
+        // MatGetFactor(Quu, MATSOLVERMUMPS, MAT_FACTOR_CHOLESKY, &LL);
+        // MatCholeskyFactorSymbolic(LL, Quu, isis, NULL);
+        // MatCholeskyFactorNumeric(LL, Quu, NULL);
 
-        /* Selected inversion */
-        if(verbose) printf("\tSelected inversion...\n");
-        Vec dd;
-        Mat DD;
-        int istart, iend;
-        VecCreateMPI(PETSC_COMM_WORLD, nu*(!rank), PETSC_DETERMINE, &dd);
-        MatCreate(PETSC_COMM_WORLD, &DD);
-        MatSetSizes(DD, nu*(!rank), nu*(!rank), PETSC_DETERMINE, PETSC_DETERMINE);
-        MatSetType(DD, MATMPIAIJ);
-        MatSetFromOptions(DD);
-        MatSetUp(DD);
-        MatGetOwnershipRange(DD, &istart, &iend);
-        for(int i=istart; i<iend; i++) MatSetValue(DD, i, i, 1.0, INSERT_VALUES);
-        MatAssemblyBegin(DD, MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(DD, MAT_FINAL_ASSEMBLY);
-        MatMumpsGetInverseTranspose(LL, DD);
-        MatGetDiagonal(DD, dd);
+        // /* Selected inversion */
+        // if(verbose) printf("\tSelected inversion...\n");
+        // Vec dd;
+        // Mat DD;
+        // int istart, iend;
+        // VecCreateMPI(PETSC_COMM_WORLD, nu*(!rank), PETSC_DETERMINE, &dd);
+        // MatCreate(PETSC_COMM_WORLD, &DD);
+        // MatSetSizes(DD, nu*(!rank), nu*(!rank), PETSC_DETERMINE, PETSC_DETERMINE);
+        // MatSetType(DD, MATMPIAIJ);
+        // MatSetFromOptions(DD);
+        // MatSetUp(DD);
+        // MatGetOwnershipRange(DD, &istart, &iend);
+        // for(int i=istart; i<iend; i++) MatSetValue(DD, i, i, 1.0, INSERT_VALUES);
+        // MatAssemblyBegin(DD, MAT_FINAL_ASSEMBLY);
+        // MatAssemblyEnd(DD, MAT_FINAL_ASSEMBLY);
+        // MatMumpsGetInverseTranspose(LL, DD);
+        // MatGetDiagonal(DD, dd);
 
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) PetscMallocGetCurrentUsage(&mem_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
-        if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
+        // /* Profiling checkpoint */
+        // if(profile) PetscTime(&t_end);
+        // if(profile) PetscMallocGetCurrentUsage(&mem_end);
+        // if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
+        // if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
 
 
     /* ---------------------------------------------------------------- */
