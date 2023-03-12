@@ -53,7 +53,7 @@ res = bru(model,
                control.family = list(hyper = lkprec),
                data = data),
           options = list(verbose = TRUE,
-                         num.threads = "4:1",
+                         num.threads = "5:6",
                          control.inla = list(int.strategy = "eb"),
                          control.compute = list(config = TRUE)))
 
