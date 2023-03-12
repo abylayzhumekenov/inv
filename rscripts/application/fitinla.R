@@ -6,17 +6,28 @@ inla.setOption(smtp='taucs', inla.mode='compact')
 # load the data
 source("getdata.R")
 detach("package:data.table", unload = TRUE)
+
+bound = inla.nonconvex.hull(
+    points = coordinates(stations), 
+    convex = 200, concave = 200, resolution = 100)
+
+mesh.resolution <- 1000
+mesh.s <- inla.mesh.2d(## loc = loc, 
+    boundary = bound, 
+    max.edge = c(1, 3) * mesh.resolution, 
+    offset = c(1e-9, mesh.resolution * 4), 
+    cutoff = mesh.resolution / 2)
+mesh.s$n
+
+# plot(mesh.s, asp=1)
+
 set.seed(1)
 # wdat = wdat[sample(dim(wdat)[1], 100), 1:20]
-wdat = wdat[, 1:(365*3)]
+wdat = wdat[seq(1, nrow(wdat), 10), 1:20]
 
 # temporal and spatial mesh
 mesh.t = inla.mesh.1d(1:(dim(wdat)[2]-1))
 loc = stations@coords[match(wdat$station, stations$station),]
-elevation = stations$elevation[match(wdat$station, stations$station)]
-bound = inla.nonconvex.hull(points = loc, convex = 200, concave = 200, resolution = 100)
-mesh.s = inla.mesh.create(loc = loc, boundary = bound, cutoff = 200)
-
 # set dimensions
 n.t = mesh.t$n
 n.s = mesh.s$n
@@ -26,10 +37,11 @@ n.st = n.s * n.t
 m.st = m.s * m.t
 
 # prepare data
+elevation = stations$elevation[match(wdat$station, stations$station)]
 data = data.frame(longitude = rep(loc[,1], m.t),
                   latitude = rep(loc[,2], m.t),
                   time = rep(1:m.t, each = m.s),
-                  y = c(as.matrix(wdat[,-1])),
+                  y = c(as.matrix(wdat[,-1])) / 10,
                   elevation = rep(elevation, m.t),
                   northing = rep(loc[,2], m.t),
                   sine = rep(sin(2*pi*(1:m.t)/365.25), each = m.s),
@@ -53,7 +65,7 @@ res = bru(model,
                control.family = list(hyper = lkprec),
                data = data),
           options = list(verbose = TRUE,
-                         num.threads = "5:6",
+                         num.threads = "8:4",
                          control.inla = list(int.strategy = "eb"),
                          control.compute = list(config = TRUE)))
 
