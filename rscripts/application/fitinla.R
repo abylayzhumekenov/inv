@@ -1,34 +1,25 @@
 library(INLA)
 library(INLAspacetime)
 library(inlabru)
-inla.setOption(smtp='taucs', inla.mode='compact')
+inla.setOption(smtp = "pardiso", inla.mode = "compact", pardiso.license = "~/pardiso.license")
 
 # load the data
 source("getdata.R")
 detach("package:data.table", unload = TRUE)
 
-bound = inla.nonconvex.hull(
-    points = coordinates(stations), 
-    convex = 200, concave = 200, resolution = 100)
+# create spatial and temporal mesh
+resolution.s = 1000
+resolution.t = 365
+bound = inla.nonconvex.hull(points = coordinates(stations), 
+                            convex = 200, concave = 200, resolution = 100)
+mesh.s = inla.mesh.2d(boundary = bound, 
+                      max.edge = c(1, 2) * resolution.s, 
+                      offset = c(1e-9, resolution.s * 2), 
+                      cutoff = resolution.s / 4)
+mesh.t = inla.mesh.1d(1:resolution.t)
 
-mesh.resolution <- 1000
-mesh.s <- inla.mesh.2d(## loc = loc, 
-    boundary = bound, 
-    max.edge = c(1, 3) * mesh.resolution, 
-    offset = c(1e-9, mesh.resolution * 4), 
-    cutoff = mesh.resolution / 2)
-mesh.s$n
-
-# plot(mesh.s, asp=1)
-
-set.seed(1)
-# wdat = wdat[sample(dim(wdat)[1], 100), 1:20]
-wdat = wdat[seq(1, nrow(wdat), 10), 1:20]
-
-# temporal and spatial mesh
-mesh.t = inla.mesh.1d(1:(dim(wdat)[2]-1))
-loc = stations@coords[match(wdat$station, stations$station),]
-# set dimensions
+# get dimensions
+wdat = wdat[,1:(resolution.t+1)]
 n.t = mesh.t$n
 n.s = mesh.s$n
 m.t = dim(wdat)[2]-1
@@ -37,6 +28,7 @@ n.st = n.s * n.t
 m.st = m.s * m.t
 
 # prepare data
+loc = stations@coords[match(wdat$station, stations$station),]
 elevation = stations$elevation[match(wdat$station, stations$station)]
 data = data.frame(longitude = rep(loc[,1], m.t),
                   latitude = rep(loc[,2], m.t),
@@ -53,10 +45,10 @@ model = ~ -1 + Interecept(1) + elevation + northing +
                time = time),
           model = stmodel)
 stmodel = stModel.define(mesh.s, mesh.t, "121",
-                         control.priors = list(prs = c(100, 0.01),
-                                               prt = c(1, 0.01),
-                                               psigma = c(10000, 0.01)))
-lkprec = list(prec = list(initial = 10, fixed = FALSE))
+                         control.priors = list(prs = c(9.895, 0.0),
+                                               prt = c(14.026, 0.0),
+                                               psigma = c(5.596, 0.0)))
+lkprec = list(prec = list(initial = -1.289, fixed = TRUE))
 
 # fit the model
 res = bru(model,
@@ -65,6 +57,7 @@ res = bru(model,
                control.family = list(hyper = lkprec),
                data = data),
           options = list(verbose = TRUE,
+                         safe = FALSE,
                          num.threads = "8:4",
                          control.inla = list(int.strategy = "eb"),
                          control.compute = list(config = TRUE)))
