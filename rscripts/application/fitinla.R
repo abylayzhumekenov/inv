@@ -52,7 +52,7 @@ result = bru(model,
                   data = data),
              options = list(verbose = TRUE,
                             safe = FALSE,
-                            num.threads = "4:8",
+                            num.threads = "8:4",
                             control.inla = list(int.strategy = "eb")))
 
 # print the result
