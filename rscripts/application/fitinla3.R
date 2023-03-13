@@ -29,8 +29,8 @@ data = data.frame(longitude = rep(loc[,1], m.t),
                   latitude = rep(loc[,2], m.t),
                   time = rep(1:m.t, each = m.s),
                   y = c(as.matrix(wdat[,-1])) / 10,
-                  elevation = rep(ele, m.t),
-                  northing = rep(loc[,2], m.t),
+                  elevation = rep(ele, m.t) - mean(ele),
+                  northing = rep(loc[,2], m.t) - mean(loc[,2]),
                   harmonic1 = rep(sin(2*pi*(1:m.t-1)/365.25), each = m.s),
                   harmonic2 = rep(cos(2*pi*(1:m.t-1)/365.25), each = m.s))
 
