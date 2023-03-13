@@ -102,7 +102,7 @@ fem.t = inla.mesh.fem(mesh.t, order = 2)
 
 # spatial mesh
 loc = stations@coords[match(wdat$station, stations$station),]
-elevation = stations$elevation[match(wdat$station, stations$station)]
+ele = stations$elevation[match(wdat$station, stations$station)]
 bound = inla.nonconvex.hull(points = loc, convex = 200, concave = 200, resolution = 100)
 mesh.s = inla.mesh.create(loc = loc, boundary = bound)
 # mesh.s = inla.mesh.2d(loc = loc, boundary = bound, max.edge = 200)
@@ -137,12 +137,12 @@ A.t = inla.spde.make.A(mesh = mesh.t)
 A.s = inla.spde.make.A(mesh = mesh.s, loc = loc)
 
 # observations and covariates
-y = c(as.matrix(wdat[,-1]))
+y = c(as.matrix(wdat[,-1])) / 10
 x0 = rep(1, m.st)
-x1 = rep(elevation, m.t)
-x2 = rep(loc[,2], m.t)
-x3 = rep(sin(2*pi*(1:m.t)/365.25), each = m.s)
-x4 = rep(cos(2*pi*(1:m.t)/365.25), each = m.s)
+x1 = rep(ele, m.t) / 1000
+x2 = rep(loc[,2], m.t) / 10000
+x3 = rep(sin(2*pi*(1:m.t-1)/365.25), each = m.s)
+x4 = rep(cos(2*pi*(1:m.t-1)/365.25), each = m.s)
 id.na = which(is.na(y))
 A.b = Matrix(cbind(x0, x1, x2, x3, x4), sparse=TRUE)
 
