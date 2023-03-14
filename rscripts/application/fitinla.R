@@ -8,13 +8,13 @@ source("getdata.R")
 detach("package:data.table", unload = TRUE)
 
 # set dimensions
-m.t = n.t = 365*12+3
-m.s = 4730
+m.t = n.t = 365*4+1
+m.s = 1000
 m.st = m.t * m.s
 
 # create mesh
 mesh.t = inla.mesh.1d(1:n.t)
-resolution.s = 200
+resolution.s = 500
 bound = inla.nonconvex.hull(points = stations@coords, convex = 200, concave = 200, resolution = 100)
 mesh.s = inla.mesh.2d(boundary = bound, max.edge = c(1, 2)*resolution.s, 
                       offset = c(1e-3, 3*resolution.s), cutoff = resolution.s/4)
