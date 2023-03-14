@@ -8,8 +8,8 @@ source("getdata.R")
 detach("package:data.table", unload = TRUE)
 
 # set dimensions
-m.t = n.t = 365*4+1
-m.s = 1000
+m.t = n.t = 1*4+1
+m.s = 10
 m.st = m.t * m.s
 
 # create mesh
@@ -59,3 +59,4 @@ result = bru(model,
 # print the result
 print(result$summary.fixed)
 print(result$summary.hyperpar)
+print(result$bru_timings)
