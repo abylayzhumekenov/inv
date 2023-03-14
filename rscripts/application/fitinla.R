@@ -8,8 +8,8 @@ source("getdata.R")
 detach("package:data.table", unload = TRUE)
 
 # set dimensions
-m.t = n.t = dim(wdat)[2]-1
-m.s = dim(wdat)[1]
+m.t = n.t = 365*4+1
+m.s = 1000
 m.st = m.t * m.s
 
 # create mesh
@@ -22,7 +22,7 @@ n.s = mesh.s$n
 n.st = n.t * n.s
 
 # prepare data
-wdat = wdat[1:m.s, 1:(m.t+1)]
+wdat = wdat[sort(sample(1:(dim(wdat)[1]), m.s)), 1:(m.t+1)]
 loc = stations@coords[match(wdat$station, stations$station),]
 ele = stations$elevation[match(wdat$station, stations$station)]
 data = data.frame(longitude = rep(loc[,1], m.t),
@@ -38,11 +38,12 @@ data = data.frame(longitude = rep(loc[,1], m.t),
 model = ~ -1 + Intercept(1) + elevation + northing + harmonic1 + harmonic2 +
     field(list(space = cbind(latitude, longitude), time = time), 
           model = stmodel)
+# theta.hat = c(-1.289, 9.895, 14.026, 5.596)
 stmodel = stModel.define(mesh.s, mesh.t, "121", 
-                         control.priors = list(prs = c(9.895, 0.5),
-                                               prt = c(14.026, 0.5),
-                                               psigma = c(5.596, 0.5)))
-lkprec = list(prec = list(initial = -1.289, fixed = FALSE))
+                         control.priors = list(prs = c(7, 0.1),
+                                               prt = c(3, 0.1),
+                                               psigma = c(3, 0.1)))
+lkprec = list(prec = list(initial = 10, fixed = FALSE))
 
 # fit the model
 result = bru(model, 
@@ -56,4 +57,5 @@ result = bru(model,
                             control.inla = list(int.strategy = "eb")))
 
 # print the result
-result$summary.hyperpar
+print(result$summary.fixed)
+print(result$summary.hyperpar)
