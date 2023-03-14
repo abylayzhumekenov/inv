@@ -8,8 +8,8 @@ source("getdata.R")
 detach("package:data.table", unload = TRUE)
 
 # set dimensions
-m.t = n.t = 365*4+1
-m.s = 1000
+m.t = n.t = 365*12+3
+m.s = 4730
 m.st = m.t * m.s
 
 # create mesh
@@ -22,6 +22,7 @@ n.s = mesh.s$n
 n.st = n.t * n.s
 
 # prepare data
+n.h = 4 # number of harmonics
 wdat = wdat[sort(sample(1:(dim(wdat)[1]), m.s)), 1:(m.t+1)]
 loc = stations@coords[match(wdat$station, stations$station),]
 ele = stations$elevation[match(wdat$station, stations$station)]
@@ -30,14 +31,18 @@ data = data.frame(longitude = rep(loc[,1], m.t),
                   time = rep(1:m.t, each = m.s),
                   y = c(as.matrix(wdat[,-1])) / 10,
                   elevation = rep(ele, m.t) / 1000,
-                  northing = rep(loc[,2], m.t) / 10000,
-                  harmonic1 = rep(sin(2*pi*(1:m.t-1)/365.25), each = m.s),
-                  harmonic2 = rep(cos(2*pi*(1:m.t-1)/365.25), each = m.s))
+                  northing = rep(loc[,2], m.t) / 10000)
+for(i in 1:n.h){
+    harm = data.frame(sin = rep(sin(i*2*pi*(1:m.t-1)/365.25), each = m.s),
+                      cos = rep(cos(i*2*pi*(1:m.t-1)/365.25), each = m.s))
+    names(harm) = c(paste0("harmonic", i, ".sin"), paste0("harmonic", i, ".cos"))
+    data = cbind(data, harm)
+}
 
 # define a model
-model = ~ -1 + Intercept(1) + elevation + northing + harmonic1 + harmonic2 +
-    field(list(space = cbind(latitude, longitude), time = time), 
-          model = stmodel)
+model = ~ -1 + Intercept(1) + elevation + northing
+for(i in 1:n.h) model = update(model, paste("~ . +", paste0("harmonic", i, ".sin"), " + ", paste0("harmonic", i, ".cos")))
+model = update(model, ~ . + field(list(space = cbind(latitude, longitude), time = time), model = stmodel))
 # theta.hat = c(-1.289, 9.895, 14.026, 5.596)
 stmodel = stModel.define(mesh.s, mesh.t, "121", 
                          control.priors = list(prs = c(7, 0.1),
