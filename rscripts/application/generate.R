@@ -13,6 +13,7 @@ write_petsc_mat = function(Q, filename){
     # encode the matrix
     Q = t(Q)
     Q = as(Q, "generalMatrix")
+    Q = as(Q, "dgCMatrix")
     x = list(classid = 1211216,
              nrows = ncol(Q),
              ncols = nrow(Q),
