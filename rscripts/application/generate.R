@@ -147,6 +147,7 @@ for(i in 1:n.h){
     A.b = cbind(A.b, rep(cos(i*2*pi*(1:m.t-1)/365.25), each = m.s))
 }
 A.b = Matrix(A.b, sparse = TRUE)
+print(head(A.b))
 id.na = which(is.na(y))
 
 # save matrices
