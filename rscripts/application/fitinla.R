@@ -45,10 +45,10 @@ for(i in 1:n.h) model = update(model, paste("~ . +", paste0("harmonic", i, ".sin
 model = update(model, ~ . + field(list(space = cbind(latitude, longitude), time = time), model = stmodel))
 # theta.hat = c(-1.289, 9.895, 14.026, 5.596)
 stmodel = stModel.define(mesh.s, mesh.t, "121", 
-                         control.priors = list(prs = c(7, 0.1),
-                                               prt = c(3, 0.1),
-                                               psigma = c(3, 0.1)))
-lkprec = list(prec = list(initial = 10, fixed = FALSE))
+                         control.priors = list(prs = c(9.985, 0.1),
+                                               prt = c(14.026, 0.1),
+                                               psigma = c(5.596, 0.1)))
+lkprec = list(prec = list(initial = -1.289, fixed = FALSE))
 
 # fit the model
 result = bru(model, 
