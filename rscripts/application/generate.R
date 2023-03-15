@@ -116,7 +116,6 @@ m.s = dim(wdat)[1]
 n.st = n.t * n.s
 m.st = m.t * m.s
 n.na = sum(is.na(wdat[,-1]))
-n.b = 5
 
 # set precisions
 if(!exists(deparse(substitute(tau_y)))) tau_y = 1e-2
@@ -137,14 +136,17 @@ A.t = inla.spde.make.A(mesh = mesh.t)
 A.s = inla.spde.make.A(mesh = mesh.s, loc = loc)
 
 # observations and covariates
+n.h = 4
 y = c(as.matrix(wdat[,-1])) / 10
-x0 = rep(1, m.st)
-x1 = rep(ele, m.t) / 1000
-x2 = rep(loc[,2], m.t) / 10000
-x3 = rep(sin(2*pi*(1:m.t-1)/365.25), each = m.s)
-x4 = rep(cos(2*pi*(1:m.t-1)/365.25), each = m.s)
+intercept = rep(1, m.st)
+elevation = rep(ele, m.t) / 1000
+northing = rep(loc[,2], m.t) / 10000
+A.b = Matrix(cbind(intercept, elevation, northing), sparse = TRUE)
+for(i in 1:n.h){
+    A.b = cbind(A.b, rep(sin(i*2*pi*(1:m.t-1)/365.25), each = m.s))
+    A.b = cbind(A.b, rep(cos(i*2*pi*(1:m.t-1)/365.25), each = m.s))
+}
 id.na = which(is.na(y))
-A.b = Matrix(cbind(x0, x1, x2, x3, x4), sparse=TRUE)
 
 # save matrices
 path = "../../data/"
