@@ -11,16 +11,13 @@ for(i in seq_along(args)){
 # function to write in binary
 write_petsc_mat = function(Q, filename){
     # encode the matrix
-    Q = t(Q)
-    Q = as(Q, "generalMatrix")
-    Q = as(Q, "dgCMatrix")
-    print(head(A.b))
+    Q = as(Q, "RsparseMatrix")
     x = list(classid = 1211216,
-             nrows = ncol(Q),
-             ncols = nrow(Q),
+             nrows = nrow(Q),
+             ncols = ncol(Q),
              nnz = length(Q@x),
              nnz_row = diff(Q@p),
-             nnz_i = Q@i,
+             nnz_i = Q@j,
              nnz_val = Q@x)
     
     # write the binary data
@@ -148,11 +145,7 @@ for(i in 1:n.h){
     A.b = cbind(A.b, rep(sin(i*2*pi*(1:m.t-1)/365.25), each = m.s))
     A.b = cbind(A.b, rep(cos(i*2*pi*(1:m.t-1)/365.25), each = m.s))
 }
-A.b = Matrix(A.b, sparse = TRUE)
-print(head(A.b))
-A.b = A.b + 0.1
-A.b = A.b - 0.1
-print(head(A.b))
+A.b = as(A.b + .Machine$double.xmin, "RsparseMatrix")
 id.na = which(is.na(y))
 
 # save matrices
