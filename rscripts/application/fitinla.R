@@ -46,7 +46,7 @@ model = update(model, ~ . + field(list(space = cbind(latitude, longitude), time 
 # theta.hat = c(-1.289, 9.895, 14.026, 5.596)
 stmodel = stModel.define(mesh.s, mesh.t, "121", 
                          control.priors = list(prs = c(10, 0.95),
-                                               prt = c(14, 0.95),
+                                               prt = c(1, 0),
                                                psigma = c(1, 0.05)))
 lkprec = list(prec = list(initial = 10, fixed = FALSE))
 
