@@ -48,7 +48,7 @@ stmodel = stModel.define(mesh.s, mesh.t, "121",
                          control.priors = list(prs = c(10, 0.95),
                                                prt = c(1, 0),
                                                psigma = c(1, 0.05)))
-lkprec = list(prec = list(initial = 10, fixed = FALSE))
+lkprec = list(prec = list(initial = 0.0275, fixed = TRUE))
 
 # fit the model
 result = bru(model, 
