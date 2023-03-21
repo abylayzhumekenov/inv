@@ -14,8 +14,8 @@ m.st = m.t * m.s
 
 # create mesh
 mesh.t = inla.mesh.1d(1:n.t)
-resolution.s = 500
-bound = inla.nonconvex.hull(points = stations@coords, convex = 200, concave = 200, resolution = 100)
+resolution.s = 500/1e4
+bound = inla.nonconvex.hull(points = stations@coords, convex = 200/1e4, concave = 200/1e4, resolution = 100)
 mesh.s = inla.mesh.2d(boundary = bound, max.edge = c(1, 2)*resolution.s, 
                       offset = c(1e-3, 3*resolution.s), cutoff = resolution.s/4)
 n.s = mesh.s$n
@@ -24,14 +24,14 @@ n.st = n.t * n.s
 # prepare data
 n.h = 4 # number of harmonics
 wdat = wdat[sort(sample(1:(dim(wdat)[1]), m.s)), 1:(m.t+1)]
-loc = stations@coords[match(wdat$station, stations$station),]
+loc = stations@coords[match(wdat$station, stations$station),]/1e4
 ele = stations$elevation[match(wdat$station, stations$station)]
 data = data.frame(longitude = rep(loc[,1], m.t),
                   latitude = rep(loc[,2], m.t),
                   time = rep(1:m.t, each = m.s),
                   y = c(as.matrix(wdat[,-1])) / 10,
                   elevation = rep(ele, m.t) / 1000,
-                  northing = rep(loc[,2], m.t) / 10000)
+                  northing = rep(loc[,2], m.t) / 10000*1e4)
 for(i in 1:n.h){
     harm = data.frame(sin = rep(sin(i*2*pi*(1:m.t-1)/365.25), each = m.s),
                       cos = rep(cos(i*2*pi*(1:m.t-1)/365.25), each = m.s))
@@ -45,9 +45,9 @@ for(i in 1:n.h) model = update(model, paste("~ . +", paste0("harmonic", i, ".sin
 model = update(model, ~ . + field(list(space = cbind(latitude, longitude), time = time), model = stmodel))
 # theta.hat = c(-1.289, 9.895, 14.026, 5.596)
 stmodel = stModel.define(mesh.s, mesh.t, "121", 
-                         control.priors = list(prs = c(7, 0),
-                                               prt = c(1, 0),
-                                               psigma = c(1, 0.05)))
+                         control.priors = list(prs = c(-10, 0.001),
+                                               prt = c(0, 0),
+                                               psigma = c(10, 0.001)))
 lkprec = list(prec = list(initial = -3.59, fixed = TRUE))
 
 # fit the model
