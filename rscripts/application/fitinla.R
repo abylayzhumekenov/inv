@@ -21,7 +21,7 @@ library(INLAspacetime)
 library(inlabru)
 library(parallel)
 inla.setOption(smtp = "pardiso", inla.mode = "compact", pardiso.license = "~/pardiso.license")
-n.cores = detecCores() %/% 2
+n.cores = detectCores() %/% 2
 
 # prepare the data
 source("prepdata.R")
