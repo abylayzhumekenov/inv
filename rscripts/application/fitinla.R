@@ -1,59 +1,49 @@
+# command line arguments
+args = commandArgs(trailingOnly=TRUE)
+for(i in seq_along(args)){
+    # problem dimensions
+    if(args[i] == "-ms") m.s = as.integer(args[i+1])
+    if(args[i] == "-mt") m.t = as.integer(args[i+1])
+    if(args[i] == "-res") res.s = as.integer(args[i+1])
+    if(args[i] == "-nh") n.h = as.integer(args[i+1])
+    
+    # hyperparameters
+    if(args[i] == "-fixed") fixed = as.integer(args[i+1])
+    if(args[i] == "-rt") range.t = as.double(args[i+1])
+    if(args[i] == "-rs") range.s = as.double(args[i+1])
+    if(args[i] == "-sigma") sigma = as.double(args[i+1])
+    if(args[i] == "-tauy") tau.y = as.double(args[i+1])
+    if(args[i] == "-taub") tau.b = as.double(args[i+1])
+}
+
+# load libraries
 library(INLA)
 library(INLAspacetime)
 library(inlabru)
+library(parallel)
 inla.setOption(smtp = "pardiso", inla.mode = "compact", pardiso.license = "~/pardiso.license")
+n.cores = detectCores() %/% 2
 
-# load the data
-source("getdata.R")
-detach("package:data.table", unload = TRUE)
-
-# set dimensions
-m.t = n.t = 365*4+1
-m.s = 1000
-m.st = m.t * m.s
-
-# create mesh
-mesh.t = inla.mesh.1d(1:n.t)
-resolution.s = 500
-bound = inla.nonconvex.hull(points = stations@coords, convex = 200, concave = 200, resolution = 100)
-mesh.s = inla.mesh.2d(boundary = bound, max.edge = c(1, 2)*resolution.s, 
-                      offset = c(1e-3, 3*resolution.s), cutoff = resolution.s/4)
-n.s = mesh.s$n
-n.st = n.t * n.s
-
-# prepare data
-n.h = 10 # number of harmonics
-wdat = wdat[sort(sample(1:(dim(wdat)[1]), m.s)), 1:(m.t+1)]
-loc = stations@coords[match(wdat$station, stations$station),]
-ele = stations$elevation[match(wdat$station, stations$station)]
-data = data.frame(xcoord = rep(loc[,1], m.t),
-                  ycoord = rep(loc[,2], m.t),
-                  time = rep(1:m.t, each = m.s),
-                  y = c(as.matrix(wdat[,-1])) / 10,
-                  elevation = rep(ele, m.t) / 1000,
-                  northing = rep(loc[,2], m.t) / 10000,
-                  t = rep(1:m.t, each = m.s) / 365.25)
-for(i in 1:n.h){
-    harm = data.frame(sin = rep(sin(i*2*pi*(1:m.t-1)/365.25), each = m.s),
-                      cos = rep(cos(i*2*pi*(1:m.t-1)/365.25), each = m.s))
-    names(harm) = c(paste0("harmonic", i, ".sin"), paste0("harmonic", i, ".cos"))
-    data = cbind(data, harm)
-}
+# prepare the data
+source("prepdata.R")
 
 # define a model
-model = ~ -1 + Intercept(1) + elevation + northing + t
+model = ~ -1 + Intercept(1) + elevation + northing
 for(i in 1:n.h) model = update(model, paste("~ . +", paste0("harmonic", i, ".sin"), " + ", paste0("harmonic", i, ".cos")))
 model = update(model, ~ . + field(list(space = cbind(xcoord, ycoord), time = time), model = stmodel))
-# stmodel = stModel.define(mesh.s, mesh.t, "121", 
-#                          control.priors = list(prs = c(1000, 0.1),
-#                                                prt = c(1, 0.1),
-#                                                psigma = c(2, 0.01)))
-# lkprec = list(prec = list(prior = "pc.prec", param = c(2, 0.01)))
-stmodel = stModel.define(mesh.s, mesh.t, "121", 
-                         control.priors = list(prs = c(1259.852337, 0),
-                                               prt = c(50, 0),
-                                               psigma = c(5.964261, 0)))
-lkprec = list(prec = list(initial = 0.1433582, fixed = TRUE))
+
+# set hyperparameters
+if(!exists(deparse(substitute(r.s)))) r.s = 1259
+if(!exists(deparse(substitute(r.t)))) r.t = 50
+if(!exists(deparse(substitute(sigma.st)))) sigma.st = 5.96
+if(!exists(deparse(substitute(tau.y)))) tau.y = 0.143
+
+# define priors
+stmodel = stModel.define(mesh.s, mesh.t, "121",
+                         control.priors = list(prs = c(r.s, 0),
+                                               prt = c(r.t, 0),
+                                               psigma = c(sigma.st, 0)))
+lkprec = list(prec = list(initial = log(tau.y), fixed = FALSE))
 
 # fit the model
 result = bru(model, 
@@ -63,10 +53,10 @@ result = bru(model,
                   data = data),
              options = list(verbose = TRUE,
                             safe = FALSE,
-                            num.threads = "8:4",
+                            num.threads = paste0(n.cores, ":1"),
                             control.inla = list(int.strategy = "eb")))
 
 # print the result
 print(result$summary.fixed)
-print(result$summary.hyperpar)
-print(result$bru_timings)
+print(result$internal.summary.hyperpar)
+print(result$cpu.used)
