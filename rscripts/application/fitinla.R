@@ -13,6 +13,10 @@ for(i in seq_along(args)){
     if(args[i] == "-sigma") sigma = as.double(args[i+1])
     if(args[i] == "-tauy") tau.y = as.double(args[i+1])
     if(args[i] == "-taub") tau.b = as.double(args[i+1])
+    
+    # number of cores
+    if(args[i] == "-ncores1") n.cores1 = as.integer(args[i+1])
+    if(args[i] == "-ncores2") n.cores2 = as.integer(args[i+1])
 }
 
 # load libraries
@@ -21,7 +25,8 @@ library(INLAspacetime)
 library(inlabru)
 library(parallel)
 inla.setOption(smtp = "pardiso", inla.mode = "compact", pardiso.license = "~/pardiso.license")
-n.cores = detectCores() %/% 2
+if(!exists(deparse(substitute(n.cores1)))) n.cores1 = detectCores()
+if(!exists(deparse(substitute(n.cores2)))) n.cores2 = 1
 
 # prepare the data
 source("prepdata.R")
@@ -52,8 +57,8 @@ result = bru(model,
                   data = data),
              options = list(verbose = TRUE,
                             safe = FALSE,
-                            num.threads = paste0(n.cores, ":1"),
-                            control.inla = list(int.strategy = "eb")))
+                            num.threads = paste0(n.cores1, ":", n.cores2),
+                            control.inla = list(cmin=0,int.strategy = "eb")))
 
 # print the result
 print(result$summary.fixed)
