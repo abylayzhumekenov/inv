@@ -107,8 +107,9 @@ gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.sq)
 # ------------------------------------------------------------------------------
 
 # data matrix
-A.b = as(as.matrix(data[-(1:3)]) + .Machine$double.xmin, "RsparseMatrix")
-id.na = which(is.na(data$y))
+A.b = as(as.matrix(data[-(1:4)]) + .Machine$double.xmin, "RsparseMatrix")
+y = data$y
+id.na = which(is.na(y))
 n.na = length(id.na)
 
 # fem matrices
