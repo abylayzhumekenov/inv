@@ -8,7 +8,6 @@ for(i in seq_along(args)){
     if(args[i] == "-nh") n.h = as.integer(args[i+1])
     
     # hyperparameters
-    if(args[i] == "-fixed") fixed = as.integer(args[i+1])
     if(args[i] == "-rt") range.t = as.double(args[i+1])
     if(args[i] == "-rs") range.s = as.double(args[i+1])
     if(args[i] == "-sigma") sigma = as.double(args[i+1])
@@ -22,7 +21,7 @@ library(INLAspacetime)
 library(inlabru)
 library(parallel)
 inla.setOption(smtp = "pardiso", inla.mode = "compact", pardiso.license = "~/pardiso.license")
-n.cores = detectCores() %/% 2
+n.cores = detecCores() %/% 2
 
 # prepare the data
 source("prepdata.R")
