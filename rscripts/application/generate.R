@@ -11,7 +11,7 @@ for(i in seq_along(args)){
     if(args[i] == "-fixed") fixed = as.integer(args[i+1])
     if(args[i] == "-rt") range.t = as.double(args[i+1])
     if(args[i] == "-rs") range.s = as.double(args[i+1])
-    if(args[i] == "-sigma") sigma = as.double(args[i+1])
+    if(args[i] == "-sigma") sigma.st = as.double(args[i+1])
     if(args[i] == "-tauy") tau.y = as.double(args[i+1])
     if(args[i] == "-taub") tau.b = as.double(args[i+1])
 }
@@ -88,11 +88,11 @@ nu.t = alpha.t - 1/2
 nu.s = alpha.s * nu.t
 
 # set hyperparameters
-if(!exists(deparse(substitute(r.s)))) r.s = 1259
-if(!exists(deparse(substitute(r.t)))) r.t = 50
+if(!exists(deparse(substitute(range.s)))) range.s = 1259
+if(!exists(deparse(substitute(range.t)))) range.t = 50
 if(!exists(deparse(substitute(sigma.st)))) sigma.st = 5.96
 if(!exists(deparse(substitute(tau.y)))) tau.y = 0.143
-if(!exists(deparse(substitute(tau_b)))) tau_b = 1e-5
+if(!exists(deparse(substitute(tau.b)))) tau.b = 1e-5
 sigma.sq = sigma.st^2
 
 # convert hyperparameters
