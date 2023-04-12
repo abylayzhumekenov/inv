@@ -468,18 +468,24 @@ int main(int argc, char **argv){
     VecCreateLocalVector(x_separ, &x_separ_seq);
     
 
+    double t1 = 0, t2 = 0, t3 = 0, tt = 0;
+    double tt0, tt1, tt2, tt3, ttt;
     /* Sampling correction */
     if(verbose) printf("\tSampling correction...\n");
     for(int i=0; i<n_sample; i++){
 
+            if(profile) PetscTime(&tt0);
+
         /* Sampling */
         InvSamplerStdNormal(&rng, &z);
         InvSamplerGMRF(ksp_sampling, z, &x);
+            if(profile) PetscTime(&tt1);
 
         /* Share the sample */
         VecScatterBegin(scatter, x, x_separ, INSERT_VALUES, SCATTER_FORWARD);
         VecScatterEnd(scatter, x, x_separ, INSERT_VALUES, SCATTER_FORWARD);
         VecGetLocalVector(x_separ, x_separ_seq);
+            if(profile) PetscTime(&tt2);
         
         /* Correct */
         MatMult(Quu_separ, x_separ_seq, v_exten);
@@ -488,7 +494,22 @@ int main(int argc, char **argv){
         VecPointwiseMult(w_exten, w_exten, w_exten);
         VecAXPY(d_exten, 1.0/n_sample, w_exten);
         VecRestoreLocalVector(x_separ, x_separ_seq);
+            if(profile) PetscTime(&tt3);
+
+            tt3 = tt3 - tt2;
+            tt2 = tt2 - tt1;
+            tt1 = tt1 - tt0;
+            ttt = tt1 + tt2 + tt3;
+            t1 = t1 + tt1;
+            t2 = t2 + tt2;
+            t3 = t3 + tt3;
+            tt = tt + ttt;
     }
+
+    t1 = t1 / ttt;
+    t2 = t2 / ttt;
+    t3 = t3 / ttt;
+    printf("\n\tTime spent (percentage):\t\t%f\t%f\t%f\n", t1, t2, t3);
 
 
     /* Profiling checkpoint */
