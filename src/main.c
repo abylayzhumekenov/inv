@@ -593,6 +593,9 @@ int main(int argc, char **argv){
     mean_concat[0] = meanu;
     mean_concat[1] = meanb;
     VecConcatenate(2, mean_concat, &mean, NULL);
+        int nnn;
+        KSPGetIterationNumber(ksp_covariates, &nnn);
+        if(profile) printf("\t\t----:\t%i\n", nnn);
 
 
     /* Profiling checkpoint */
