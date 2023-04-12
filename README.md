@@ -28,12 +28,11 @@ Compile by running `make` in the project directory. Compilation is the same on P
 ## Dependencies
 
 * petsc (configure with `--download-mumps --download-scalapack --download-metis --download-parmetis`)
-* pcg_random
-* lapack (shipped with petsc)
-* mpi (shipped with petsc)
+* mpi (pre-installed)
+* lapack (pre-installed)
 * mumps (shipped with petsc)
 * metis (shipped with petsc)
-* gklib (if you build metis yourself)
+* pcg_random
 
 ## Run with options
 
