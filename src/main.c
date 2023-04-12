@@ -384,11 +384,11 @@ int main(int argc, char **argv){
     PC pc_sampling;
         /* Profiling checkpoint */
         if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
+        if(profile) printf("\n\tTime spent on %i:\t\t%f sec\n", rank, t_end - t_start);
     KSPCreate(PETSC_COMM_WORLD, &ksp_sampling);
         /* Profiling checkpoint */
         if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
+        if(profile) printf("\n\tTime spent on %i:\t\t%f sec\n", rank, t_end - t_start);
     KSPSetOperators(ksp_sampling, Quu, Quu);
     KSPSetTolerances(ksp_sampling, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetComputeEigenvalues(ksp_sampling, PETSC_TRUE);

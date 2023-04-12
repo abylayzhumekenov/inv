@@ -48,7 +48,7 @@ PetscErrorCode InvShellApply(PC pc, Vec x, Vec y){
         PetscTime(&tt1);
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if(!rank) printf("\n\t\tShellApply:\t%f\n", tt1-tt0);
+        if(!rank) printf("\t\tShellApply:\t%f\n", tt1-tt0);
 
     return 0;
 }
@@ -64,7 +64,7 @@ PetscErrorCode InvShellApplyTranspose(PC pc, Vec x, Vec y){
         PetscTime(&tt1);
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if(!rank) printf("\n\t\tShellApplyTranspose:\t%f\n", tt1-tt0);
+        if(!rank) printf("\t\tShellApplyTranspose:\t%f\n", tt1-tt0);
 
     return 0;
 }
@@ -72,18 +72,25 @@ PetscErrorCode InvShellApplyTranspose(PC pc, Vec x, Vec y){
 
 PetscErrorCode InvShellApplyBA(PC pc, PCSide side, Vec x, Vec y, Vec work){
 
-        double tt0, tt1;
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        double tt0, tt1, tt2, tt3, tt4;
         PetscTime(&tt0);
     InvShellPC *shell;
     PCShellGetContext(pc, &shell);
 
-    PCApplySymmetricRight(shell->pc, x, y);
-    MatMult(shell->Q, y, work);
-    PCApplySymmetricLeft(shell->pc, work, y);
         PetscTime(&tt1);
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if(!rank) printf("\n\t\tShellApplyBA:\t%f\n", tt1-tt0);
+    PCApplySymmetricRight(shell->pc, x, y);
+        PetscTime(&tt2);
+    MatMult(shell->Q, y, work);
+        PetscTime(&tt3);
+    PCApplySymmetricLeft(shell->pc, work, y);
+        PetscTime(&tt4);
+        tt4 -= tt3;
+        tt3 -= tt2;
+        tt2 -= tt1;
+        tt1 -= tt0;
+        if(!rank) printf("\t\tShellApplyBA:\t%f\t%f\t%f\t%f\n", tt1, tt2, tt3, tt4);
 
     return 0;
 }
@@ -108,7 +115,7 @@ PetscErrorCode InvShellApplyLeft(PC pc, Vec x, Vec y){
         PetscTime(&tt1);
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if(!rank) printf("\n\t\tShellApplyLeft:\t%f\n", tt1-tt0);
+        if(!rank) printf("\t\tShellApplyLeft:\t%f\n", tt1-tt0);
 
     return 0;
 }
@@ -124,7 +131,7 @@ PetscErrorCode InvShellApplyRight(PC pc, Vec x, Vec y){
         PetscTime(&tt1);
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if(!rank) printf("\n\t\tShellApplyRight:\t%f\n", tt1-tt0);
+        if(!rank) printf("\t\tShellApplyRight:\t%f\n", tt1-tt0);
 
     return 0;
 }
