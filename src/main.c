@@ -388,6 +388,9 @@ int main(int argc, char **argv){
     KSPSetComputeEigenvalues(ksp_sampling, PETSC_TRUE);
     KSPSetPCSide(ksp_sampling, PC_SYMMETRIC);
     KSPGetPC(ksp_sampling, &pc_sampling);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
 
     if(verbose) printf("\tSetting up a shell preconditioner...\n");
     PCSetType(pc_sampling, PCSHELL);

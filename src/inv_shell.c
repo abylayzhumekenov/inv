@@ -4,6 +4,7 @@
 PetscErrorCode InvShellCreate(InvShellPC** shell){
 
     InvShellPC* ctx = (InvShellPC*)malloc(sizeof(InvShellPC));
+    printf("\n\t\t%lu\n", sizeof(InvShellPC));
     ctx->Q = NULL;
     ctx->pc = NULL;
     *shell = ctx;
