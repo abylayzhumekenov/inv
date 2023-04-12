@@ -392,19 +392,28 @@ int main(int argc, char **argv){
     if(verbose) printf("\tSetting up a shell preconditioner...\n");
     PCSetType(pc_sampling, PCSHELL);
     InvShellCreate(&shell);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     PCShellSetApply(pc_sampling, InvShellApply);
     PCShellSetApplyTranspose(pc_sampling, InvShellApplyTranspose);
     PCShellSetApplyBA(pc_sampling, InvShellApplyBA);
     PCShellSetApplySymmetricLeft(pc_sampling, InvShellApplyLeft);
     PCShellSetApplySymmetricRight(pc_sampling, InvShellApplyRight);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     PCShellSetContext(pc_sampling, shell);
     PCShellSetDestroy(pc_sampling, InvShellDestroy);
     PCShellSetName(pc_sampling, "shell");
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     InvShellSetup(pc_sampling, Quu, PETSC_COMM_WORLD);
 
-        // /* Profiling checkpoint */
-        // if(profile) PetscTime(&t_end);
-        // if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
 
 
     /* Create a solver for correction */
@@ -419,11 +428,6 @@ int main(int argc, char **argv){
     PCSetFromOptions(pc_correction);
     KSPSetTolerances(ksp_correction, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetFromOptions(ksp_correction);
-
-        // /* Profiling checkpoint */
-        // if(profile) PetscTime(&t_end);
-        // if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
-
 
     /* Create a solver for covariates */
     if(verbose) printf("\tSetting up a covariates solver...\n");

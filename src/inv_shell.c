@@ -20,28 +20,16 @@ PetscErrorCode InvShellSetup(PC pc, Mat Q, MPI_Comm comm){
     KSP *ksp_sub;
     PC pc_core, pc_sub;
 
-        /* Profiling checkpoint */
-        double t_start = 0, t_end = 0;
-        PetscTime(&t_start);
-
     PCCreate(comm, &pc_core);
     PCSetOperators(pc_core, Q, Q);
     PCSetType(pc_core, PCBJACOBI);
     PCSetUp(pc_core);
-    
-        /* Profiling checkpoint */
-        PetscTime(&t_end);
-        printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
 
     PCBJacobiGetSubKSP(pc_core, NULL, NULL, &ksp_sub);
     KSPSetType(*ksp_sub, KSPGMRES);
     KSPGetPC(*ksp_sub, &pc_sub);
     PCSetType(pc_sub, PCICC);
     KSPSetPCSide(*ksp_sub, PC_SYMMETRIC);
-
-        /* Profiling checkpoint */
-        PetscTime(&t_end);
-        printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
 
     shell->Q = Q;
     shell->pc = pc_core;
