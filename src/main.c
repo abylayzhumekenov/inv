@@ -587,6 +587,15 @@ int main(int argc, char **argv){
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
 
+        if(profile) PetscTime(&t_start);
+        PCApplySymmetricLeft(pc_covariates, nu, meanu);
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tUsual PCApplyLeft:\t\t%f sec\n", t_end - t_start);
+        if(profile) PetscTime(&t_start);
+        PCApplySymmetricRight(pc_covariates, nu, meanu);
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tUsual PCApplyRight:\t\t%f sec\n", t_end - t_start);
+
 
     /* ---------------------------------------------------------------- */
     /* ---------------------------- CLEAN UP -------------------------- */
