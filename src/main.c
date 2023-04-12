@@ -417,6 +417,7 @@ int main(int argc, char **argv){
     KSPCreate(PETSC_COMM_SELF, &ksp_correction);
     KSPSetOperators(ksp_correction, Quu_exten, Quu_exten);
     KSPSetType(ksp_correction, KSPGMRES);
+        KSPSetPCSide(ksp_sampling, PC_SYMMETRIC);
     KSPGetPC(ksp_correction, &pc_correction);
     PCSetType(pc_correction, PCBJACOBI);
     PCSetFromOptions(pc_correction);
