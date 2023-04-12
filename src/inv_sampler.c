@@ -28,12 +28,16 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
     VecSet(xx, 0.0);
     VecAssemblyBegin(xx);
     VecAssemblyEnd(xx);
+        PetscTime(&tt1);
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if(!rank) printf("\n\t\tSampling:\t%f\n", tt1-tt0);
     KSPSolve(ksp, z, y);
     KSPGetIterationNumber(ksp, &niter);
     KSP_GMRES* gmres = (KSP_GMRES*)ksp->data;
     max_niter = gmres->max_k;
         PetscTime(&tt1);
-        printf("\n\t\tSampling:\t%i\t%f\n", niter, tt1-tt0);
+        if(!rank) printf("\n\t\tSampling:\t%f\n", tt1-tt0);
 
     /* Get Krylov vectors and the Hessenberg matrix */
     Vec* v = gmres->vecs + 2;

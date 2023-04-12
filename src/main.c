@@ -382,30 +382,18 @@ int main(int argc, char **argv){
     InvShellPC* shell;
     KSP ksp_sampling;
     PC pc_sampling;
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPCreate(PETSC_COMM_WORLD, &ksp_sampling);
         /* Profiling checkpoint */
         if(profile) PetscTime(&t_end);
         if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetOperators(ksp_sampling, Quu, Quu);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetTolerances(ksp_sampling, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetComputeEigenvalues(ksp_sampling, PETSC_TRUE);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetPCSide(ksp_sampling, PC_SYMMETRIC);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPGetPC(ksp_sampling, &pc_sampling);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
 
 
     if(verbose) printf("\tSetting up a shell preconditioner...\n");
