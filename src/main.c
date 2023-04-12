@@ -382,13 +382,11 @@ int main(int argc, char **argv){
     InvShellPC* shell;
     KSP ksp_sampling;
     PC pc_sampling;
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        printf("\n\tTime spent on %i:\t\t%f sec\n", rank, t_end - t_start);
+        double tt0, tt1;
+        PetscTime(&tt0);
     KSPCreate(PETSC_COMM_WORLD, &ksp_sampling);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        printf("\n\tTime spent on %i:\t\t%f sec\n", rank, t_end - t_start);
+        PetscTime(&tt1);
+        printf("\n\tTime spent on %i:\t\t%f sec\n", rank, tt1-tt0);
     KSPSetOperators(ksp_sampling, Quu, Quu);
     KSPSetTolerances(ksp_sampling, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetComputeEigenvalues(ksp_sampling, PETSC_TRUE);
