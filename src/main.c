@@ -383,40 +383,43 @@ int main(int argc, char **argv){
     KSP ksp_sampling;
     PC pc_sampling;
     KSPCreate(PETSC_COMM_WORLD, &ksp_sampling);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetOperators(ksp_sampling, Quu, Quu);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetTolerances(ksp_sampling, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetComputeEigenvalues(ksp_sampling, PETSC_TRUE);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPSetPCSide(ksp_sampling, PC_SYMMETRIC);
+        /* Profiling checkpoint */
+        if(profile) PetscTime(&t_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     KSPGetPC(ksp_sampling, &pc_sampling);
         /* Profiling checkpoint */
         if(profile) PetscTime(&t_end);
         if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
 
+
     if(verbose) printf("\tSetting up a shell preconditioner...\n");
     PCSetType(pc_sampling, PCSHELL);
     InvShellCreate(&shell);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     PCShellSetApply(pc_sampling, InvShellApply);
     PCShellSetApplyTranspose(pc_sampling, InvShellApplyTranspose);
     PCShellSetApplyBA(pc_sampling, InvShellApplyBA);
     PCShellSetApplySymmetricLeft(pc_sampling, InvShellApplyLeft);
     PCShellSetApplySymmetricRight(pc_sampling, InvShellApplyRight);
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     PCShellSetContext(pc_sampling, shell);
     PCShellSetDestroy(pc_sampling, InvShellDestroy);
     PCShellSetName(pc_sampling, "shell");
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     InvShellSetup(pc_sampling, Quu, PETSC_COMM_WORLD);
-
-        /* Profiling checkpoint */
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
 
 
     /* Create a solver for correction */
@@ -431,6 +434,7 @@ int main(int argc, char **argv){
     PCSetFromOptions(pc_correction);
     KSPSetTolerances(ksp_correction, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetFromOptions(ksp_correction);
+
 
     /* Create a solver for covariates */
     if(verbose) printf("\tSetting up a covariates solver...\n");
@@ -475,19 +479,13 @@ int main(int argc, char **argv){
     VecCreateLocalVector(x_separ, &x_separ_seq);
     
 
-    double t1 = 0, t2 = 0, t3 = 0, tt = 0;
-    double tt0, tt1, tt2, tt3, ttt;
     /* Sampling correction */
     if(verbose) printf("\tSampling correction...\n");
     for(int i=0; i<n_sample; i++){
 
-            if(profile) PetscTime(&tt0);
-
         /* Sampling */
         InvSamplerStdNormal(&rng, &z);
-            if(profile) PetscTime(&tt1);
         InvSamplerGMRF(ksp_sampling, z, &x);
-            if(profile) PetscTime(&tt2);
 
         /* Share the sample */
         VecScatterBegin(scatter, x, x_separ, INSERT_VALUES, SCATTER_FORWARD);
@@ -501,22 +499,7 @@ int main(int argc, char **argv){
         VecPointwiseMult(w_exten, w_exten, w_exten);
         VecAXPY(d_exten, 1.0/n_sample, w_exten);
         VecRestoreLocalVector(x_separ, x_separ_seq);
-            if(profile) PetscTime(&tt3);
-
-            tt3 = tt3 - tt2;
-            tt2 = tt2 - tt1;
-            tt1 = tt1 - tt0;
-            ttt = tt1 + tt2 + tt3;
-            t1 = t1 + tt1;
-            t2 = t2 + tt2;
-            t3 = t3 + tt3;
-            tt = tt + ttt;
     }
-
-    t1 = t1 / ttt;
-    t2 = t2 / ttt;
-    t3 = t3 / ttt;
-    if(profile) printf("\n\tTime spent (percentage):\t\t%f\t%f\t%f\n", t1, t2, t3);
 
 
     /* Profiling checkpoint */

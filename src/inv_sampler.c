@@ -18,7 +18,7 @@ PetscErrorCode InvSamplerStdNormal(pcg64_random_t* rng, Vec* z){
 
 
 PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
-        double tt0, tt1, tt2, tt3, tt4, tt5, tt6, tt7;
+        double tt0, tt1;
         PetscTime(&tt0);
     /* Solve a system */
     int niter, max_niter;
@@ -33,6 +33,7 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
     KSP_GMRES* gmres = (KSP_GMRES*)ksp->data;
     max_niter = gmres->max_k;
         PetscTime(&tt1);
+        printf("\n\t\tSampling:\t%i\t%f\n", niter, tt1-tt0);
 
     /* Get Krylov vectors and the Hessenberg matrix */
     Vec* v = gmres->vecs + 2;
@@ -41,7 +42,6 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
         eig_diag[i] = gmres->hes_origin[(max_niter+1)*i+i];
         if(i<niter-1) eig_offdiag[i] = gmres->hes_origin[(max_niter+1)*i+i+1];
     }
-        PetscTime(&tt2);
 
     /* Eigendecomposition of the Hessenberg matrix */
     const char eig_v = 'I';
@@ -49,7 +49,6 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
     double eig_work[5*niter];
     double* eig_vectors = (double*)malloc(niter*niter * sizeof(double));
     dsteqr_(&eig_v, &eig_n, eig_diag, eig_offdiag, eig_vectors, &eig_n, eig_work, &eig_info);
-        PetscTime(&tt3);
 
     /* Compute right term of xx = V U D^-1/2 U^T (beta e_1) = V * udube, that is, of 'udube'     }:8)     */
     double beta0 = gmres->rnorm0;
@@ -60,36 +59,19 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
             udube[i] += beta0 / sqrt(eig_diag[j]) * eig_vectors[j*niter] * eig_vectors[j*niter+i];
         }
     }
-        PetscTime(&tt4);
 
     /* Compute the sample xx = V * udube */
     VecMAXPY(xx, niter, udube, v);
-        PetscTime(&tt5);
 
     /* Unwind the preconditioner x = L^-T * V * xx */
     PC pc;
     KSPGetPC(ksp, &pc);
     PCApplySymmetricRight(pc, xx, *x);
-        PetscTime(&tt6);
 
     /* Clean up */
     VecDestroy(&y);
     VecDestroy(&xx);
     free(eig_vectors);
-        PetscTime(&tt7);
-
-        tt7 = tt7 - tt6;
-        tt6 = tt6 - tt5;
-        tt5 = tt5 - tt4;
-        tt4 = tt4 - tt3;
-        tt3 = tt3 - tt2;
-        tt2 = tt2 - tt1;
-        tt1 = tt1 - tt0;
-        tt0 = tt1 + tt2 + tt3 + tt4 + tt5 + tt6 + tt7;
-
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if(rank) printf("\n\t\tSampling:\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", tt1/tt0, tt2/tt0, tt3/tt0, tt4/tt0, tt5/tt0, tt6/tt0, tt7/tt0);
 
     return 0;
 }
