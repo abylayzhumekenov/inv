@@ -55,6 +55,7 @@ int main(int argc, char **argv){
     /* ---------------------------- INPUT ----------------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nINPUT\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -105,6 +106,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -115,6 +117,7 @@ int main(int argc, char **argv){
     /* ---------------------------- PARTITIONING ---------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nPARTITIONING\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -200,6 +203,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -210,6 +214,7 @@ int main(int argc, char **argv){
     /* ---------------------------- ASSEMBLY -------------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nASSEMBLY\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -280,6 +285,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -290,6 +296,7 @@ int main(int argc, char **argv){
     /* ---------------------------- DIRECT SOLVE ---------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nDIRECT SOLVE\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -323,6 +330,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -373,6 +381,7 @@ int main(int argc, char **argv){
     /* ---------------------------- KSP SOLVERS ----------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nKSP SOLVERS\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -438,6 +447,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -448,6 +458,7 @@ int main(int argc, char **argv){
     /* ---------------------------- SAMPLING CORRECTION --------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nSAMPLING CORRECTION\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -490,6 +501,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -500,6 +512,7 @@ int main(int argc, char **argv){
     /* ---------------------------- COVARIATE CORRECTION -------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nCOVARIATE CORRECTION\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -543,6 +556,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -553,6 +567,7 @@ int main(int argc, char **argv){
     /* ---------------------------- SOLVE FOR THE MEAN ---------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nSOLVE FOR THE MEAN\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -581,6 +596,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -604,6 +620,7 @@ int main(int argc, char **argv){
     /* ---------------------------- CLEAN UP -------------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nCLEAN UP\n");
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -744,6 +761,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -757,6 +775,7 @@ int main(int argc, char **argv){
 
 
     /* Final profiling */
+    if(profile) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTotal time:\t\t%f sec\n", t_end - t_init);
