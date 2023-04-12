@@ -509,7 +509,7 @@ int main(int argc, char **argv){
     t1 = t1 / ttt;
     t2 = t2 / ttt;
     t3 = t3 / ttt;
-    printf("\n\tTime spent (percentage):\t\t%f\t%f\t%f\n", t1, t2, t3);
+    if(profile) printf("\n\tTime spent (percentage):\t\t%f\t%f\t%f\n", t1, t2, t3);
 
 
     /* Profiling checkpoint */
