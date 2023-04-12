@@ -86,7 +86,10 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
         tt2 = tt2 - tt1;
         tt1 = tt1 - tt0;
         tt0 = tt1 + tt2 + tt3 + tt4 + tt5 + tt6 + tt7;
-        printf("\n\t\tSampling:\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", tt1/tt0, tt2/tt0, tt3/tt0, tt4/tt0, tt5/tt0, tt6/tt0, tt7/tt0);
+
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if(rank) printf("\n\t\tSampling:\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", tt1/tt0, tt2/tt0, tt3/tt0, tt4/tt0, tt5/tt0, tt6/tt0, tt7/tt0);
 
     return 0;
 }
