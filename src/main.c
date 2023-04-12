@@ -482,14 +482,14 @@ int main(int argc, char **argv){
 
         /* Sampling */
         InvSamplerStdNormal(&rng, &z);
-        InvSamplerGMRF(ksp_sampling, z, &x);
             if(profile) PetscTime(&tt1);
+        InvSamplerGMRF(ksp_sampling, z, &x);
+            if(profile) PetscTime(&tt2);
 
         /* Share the sample */
         VecScatterBegin(scatter, x, x_separ, INSERT_VALUES, SCATTER_FORWARD);
         VecScatterEnd(scatter, x, x_separ, INSERT_VALUES, SCATTER_FORWARD);
         VecGetLocalVector(x_separ, x_separ_seq);
-            if(profile) PetscTime(&tt2);
         
         /* Correct */
         MatMult(Quu_separ, x_separ_seq, v_exten);
