@@ -605,7 +605,7 @@ int main(int argc, char **argv){
         int nnn;
         const char* reason;
         double sumy;
-        VecSum(bu, &sumy);
+        VecSum(y, &sumy);
         KSPGetIterationNumber(ksp_covariates, &nnn);
         KSPGetConvergedReasonString(ksp_covariates, &reason);
         if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\tSum of y:\t%f\n", reason, nnn, sumy);
