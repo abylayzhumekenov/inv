@@ -605,8 +605,8 @@ int main(int argc, char **argv){
         int nnn;
         char** reason;
         KSPGetIterationNumber(ksp_covariates, &nnn);
-        KSPGetConvergedReasonString(ksp_covariates, &reason);
-        if(profile) printf("\t\tReason:\t%c\tIterations:\t%i\n", reason, nnn);
+        KSPGetConvergedReasonString(ksp_covariates, reason);
+        if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\n", reason, nnn);
 
         if(profile) PetscTime(&t_start);
         PCApplySymmetricLeft(pc_covariates, bu, meanu);
