@@ -3,4 +3,7 @@ job.modules
 job.sh
 job.err
 job.out
+job2.sh
+job2.err
+job2.out
 !.gitignore
