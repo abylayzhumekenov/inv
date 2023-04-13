@@ -2,7 +2,7 @@ import sys
 import imageio
 n = int(sys.argv[1])
 
-if n < 365:
+if n < 366:
     images = []
     for i in range(0, n):
         filename = 'img/{}.png'.format(i+1)
