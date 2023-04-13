@@ -8,7 +8,7 @@ $$
 \begin{aligned}
     y|x,\theta &\sim \mathcal{N}(Ax,Q_y^{-1}) \\
     x|\theta &\sim \mathcal{N}(0,Q_x^{-1}) \\
-    \theta &= \theta_0 (\text{fixed})
+    \theta &= \text{fixed}
 \end{aligned}
 $$
 
