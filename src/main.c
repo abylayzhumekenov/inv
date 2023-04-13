@@ -576,7 +576,6 @@ int main(int argc, char **argv){
     if(verbose) printf("\tSolving the system...\n");
     Vec bu, bb, cu, cb, meanu, meanb, mean_concat[2], mean;
     MatZeroRowsIS(Ab, is_na, 0.0, x, y);
-        VecView(y, PETSC_VIEWER_STDOUT_WORLD);
     VecDuplicate(d, &bu);
     VecDuplicate(s, &bb);
     VecDuplicate(d, &cu);
@@ -605,9 +604,11 @@ int main(int argc, char **argv){
 
         int nnn;
         const char* reason;
+        double sumy;
+        VecSum(y, &sumy);
         KSPGetIterationNumber(ksp_covariates, &nnn);
         KSPGetConvergedReasonString(ksp_covariates, &reason);
-        if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\n", reason, nnn);
+        if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\tSum of y:\t%f\n", reason, nnn, sumy);
 
         if(profile) PetscTime(&t_start);
         PCApplySymmetricLeft(pc_covariates, bu, meanu);
