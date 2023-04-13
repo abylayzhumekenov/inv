@@ -603,10 +603,10 @@ int main(int argc, char **argv){
     if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
 
         int nnn;
-        char** reason;
+        const char** reason;
         KSPGetIterationNumber(ksp_covariates, &nnn);
         KSPGetConvergedReasonString(ksp_covariates, reason);
-        if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\n", reason, nnn);
+        if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\n", *reason, nnn);
 
         if(profile) PetscTime(&t_start);
         PCApplySymmetricLeft(pc_covariates, bu, meanu);
