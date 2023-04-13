@@ -576,6 +576,7 @@ int main(int argc, char **argv){
     if(verbose) printf("\tSolving the system...\n");
     Vec bu, bb, cu, cb, meanu, meanb, mean_concat[2], mean;
     MatZeroRowsIS(Ab, is_na, 0.0, x, y);
+        VecView(y, PETSC_VIEWER_STDOUT_WORLD);
     VecDuplicate(d, &bu);
     VecDuplicate(s, &bb);
     VecDuplicate(d, &cu);
