@@ -58,7 +58,7 @@ result = bru(model,
              options = list(verbose = TRUE,
                             safe = FALSE,
                             num.threads = paste0(n.cores1, ":", n.cores2),
-                            control.inla = list(cmin=0,int.strategy = "eb")))
+                            control.inla = list(cmin=0, int.strategy = "eb")))
 
 # print the result
 print(result$summary.fixed)
