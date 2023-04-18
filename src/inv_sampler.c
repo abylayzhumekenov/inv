@@ -18,8 +18,7 @@ PetscErrorCode InvSamplerStdNormal(pcg64_random_t* rng, Vec* z){
 
 
 PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
-        double tt0, tt1;
-        PetscTime(&tt0);
+    
     /* Solve a system */
     int niter, max_niter;
     Vec xx, y;
@@ -28,16 +27,10 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
     VecSet(xx, 0.0);
     VecAssemblyBegin(xx);
     VecAssemblyEnd(xx);
-        PetscTime(&tt1);
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if(!rank) printf("\n\t\tSampling:\t%f\n", tt1-tt0);
     KSPSolve(ksp, z, y);
     KSPGetIterationNumber(ksp, &niter);
     KSP_GMRES* gmres = (KSP_GMRES*)ksp->data;
     max_niter = gmres->max_k;
-        PetscTime(&tt1);
-        if(!rank) printf("\n\t\tSampling:\t%f\n", tt1-tt0);
 
     /* Get Krylov vectors and the Hessenberg matrix */
     Vec* v = gmres->vecs + 2;
@@ -76,6 +69,18 @@ PetscErrorCode InvSamplerGMRF(KSP ksp, Vec z, Vec* x){
     VecDestroy(&y);
     VecDestroy(&xx);
     free(eig_vectors);
+
+    return 0;
+}
+
+
+PetscErrorCode InvSamplerGMRF2(KSP ksp, Vec z, Vec* x){
+    
+    // Sample using Quu^-1(L0z0 + L1z1 + ...)
+    // See Siden et al.
+    
+    // Since cannot apply Cholesky directly, we compute Lz = (LL^T)(L^-Tz)
+    // However, now we cannot compute L^-Tz, because not positive definite or invertible
 
     return 0;
 }

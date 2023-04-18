@@ -106,11 +106,11 @@ gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.sq)
 # ---------------------------- CREATE MATRICES ---------------------------------
 # ------------------------------------------------------------------------------
 
-# data matrix
+# data matrices
 A.b = as(as.matrix(data[-(1:4)]) + .Machine$double.xmin, "RsparseMatrix")
 y = data$y
-id.na = which(is.na(y))
-n.na = length(id.na)
+q.yy = sqrt(tau.y) * (!is.na(y))
+y[is.na(y)] = 0
 
 # fem matrices
 fem.t = inla.mesh.fem(mesh.t, order = 2)
@@ -142,8 +142,8 @@ write_petsc_mat(J.2*gamma.e^2*gamma.t^2, paste0(path,"J2"))
 write_petsc_mat(K.1, paste0(path,"K1"))
 write_petsc_mat(K.2, paste0(path,"K2"))
 write_petsc_mat(K.3, paste0(path,"K3"))
-write_petsc_mat(A.t*sqrt(tau.y), paste0(path,"At"))
-write_petsc_mat(A.s, paste0(path,"As"))
-write_petsc_mat(A.b*sqrt(tau.y), paste0(path,"Ab"))
-write_petsc_vec(y*sqrt(tau.y), paste0(path,"y"))
-write_petsc_is(id.na, paste0(path,"isna"))
+write_petsc_mat(t(A.t), paste0(path,"At"))
+write_petsc_mat(t(A.s), paste0(path,"As"))
+write_petsc_mat(A.b, paste0(path,"Ab"))
+write_petsc_vec(y, paste0(path,"y"))
+write_petsc_vec(q.yy, paste0(path,"qyy"))

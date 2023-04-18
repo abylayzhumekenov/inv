@@ -18,7 +18,7 @@ int main(int argc, char **argv){
 
     /* Set parameters from the options */
     int n_iter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, profile = 0;
-    double tau_y = 1e-2, tau_b = 1e-5;
+    double tau_b = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
             n_sample = atoi(argv[i+1]);
@@ -30,8 +30,6 @@ int main(int argc, char **argv){
             verbose = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-p")){
             profile = atoi(argv[i+1]);
-        } else if(!strcmp(argv[i], "-tauy")){
-            tau_y = atof(argv[i+1]);
         } else if(!strcmp(argv[i], "-taub")){
             tau_b = atof(argv[i+1]);
         }
@@ -65,9 +63,9 @@ int main(int argc, char **argv){
     int nb;
     int nt, ns, nu;
     int mt, ms, mu;
-    MatGetSizeLoad("data/At", &mt, &nt);
-    MatGetSizeLoad("data/As", &ms, &ns);
-    MatGetSizeLoad("data/Ab", &mu, &nb);
+    MatGetSizeLoad("data/At", &nt, &mt);    // At^T
+    MatGetSizeLoad("data/As", &ns, &ms);    // As^T
+    MatGetSizeLoad("data/Ab", &mu, &nb);    // Ab
     nu = nt * ns;
     mu = mt * ms;
 
@@ -79,18 +77,18 @@ int main(int argc, char **argv){
     MatCreateLoad(PETSC_COMM_WORLD, MATMPIAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/J0", &J0);
     MatCreateLoad(PETSC_COMM_WORLD, MATMPIAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/J1", &J1);
     MatCreateLoad(PETSC_COMM_WORLD, MATMPIAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/J2", &J2);
-    MatCreateLoad(PETSC_COMM_WORLD, MATMPIAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/At", &At);
+    MatCreateLoad(PETSC_COMM_WORLD, MATMPIAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/At", &At);   // This is actually At^T
     MatCreateLoad(PETSC_COMM_SELF, MATSEQAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/K1", &K1);
     MatCreateLoad(PETSC_COMM_SELF, MATSEQAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/K2", &K2);
     MatCreateLoad(PETSC_COMM_SELF, MATSEQAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/K3", &K3);
-    MatCreateLoad(PETSC_COMM_SELF, MATSEQAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/As", &As);
+    MatCreateLoad(PETSC_COMM_SELF, MATSEQAIJ, PETSC_DECIDE, PETSC_DECIDE, PETSC_DETERMINE, PETSC_DETERMINE, "data/As", &As);    // This is actually As^T
 
 
     /* Set local dimensions */
     if(verbose) printf("\tSetting local dimensions...\n");
     int nt_local, nu_local;
     int mt_local, mu_local;
-    MatGetLocalSize(At, &mt_local, &nt_local);
+    MatGetLocalSize(At, &nt_local, &mt_local);  // At^T
     nu_local = nt_local * ns;
     mu_local = mt_local * ms;
 
@@ -98,11 +96,11 @@ int main(int argc, char **argv){
     /* Load the data */
     if(verbose) printf("\tLoading the data...\n");
     Mat Ab;
-    Vec y;
-    IS is_na;
+    Vec y, qyy, qyy_seq;
     MatCreateLoad(PETSC_COMM_WORLD, MATMPIDENSE, mu_local, nb*last, PETSC_DETERMINE, nb, "data/Ab", &Ab);
     VecCreateLoad(PETSC_COMM_WORLD, VECMPI, mu_local, PETSC_DETERMINE, "data/y", &y);
-    ISCreateLoad(PETSC_COMM_SELF, "data/isna", &is_na);
+    VecCreateLoad(PETSC_COMM_WORLD, VECMPI, mu_local, PETSC_DETERMINE, "data/qyy", &qyy);
+    VecCreateLoad(PETSC_COMM_SELF, VECMPI, PETSC_DECIDE, mu, "data/qyy", &qyy_seq);
 
 
     /* Profiling checkpoint */
@@ -125,6 +123,7 @@ int main(int argc, char **argv){
     /* Compute the ghost and separator nodes */
     if(verbose) printf("\tComputing the ghost and separator nodes...\n");
     IS isnt_local, isnt_ghost, isnt_exten, isnt_separ;
+    IS ismt_full;
     MatGetOwnershipISRows(PETSC_COMM_WORLD, J2, &isnt_local);
     MatGetOwnershipISRows(PETSC_COMM_WORLD, J2, &isnt_exten);
     MatIncreaseOverlap(J2, 1, &isnt_exten, n_neighbor);
@@ -135,6 +134,7 @@ int main(int argc, char **argv){
     MatIncreaseOverlap(J2, 1, &isnt_separ, 1);
     ISDifference(isnt_exten, isnt_local, &isnt_ghost);
     ISDifference(isnt_separ, isnt_exten, &isnt_separ);
+    ISCreateStride(PETSC_COMM_SELF, mt, 0, 1, &ismt_full);
 
     int nt_ghost, nt_exten, nt_separ;
     int mt_ghost, mt_exten, mt_separ;
@@ -156,42 +156,27 @@ int main(int argc, char **argv){
     
     /* Compute the ghost and separator blocks */
     if(verbose) printf("\tComputing the ghost and separator blocks...\n");
-    IS isnu_local, isnu_ghost, isnu_exten, isnu_separ;
-    IS ismu_local, ismu_ghost, ismu_exten, ismu_separ;
+    IS isnu_local, isnu_separ;
+    // IS isnu_ghost, isnu_exten;
+    // IS ismu_local, ismu_ghost, ismu_exten, ismu_separ;
+    // // IS ismu_full;
     ISCreateBlockIS(PETSC_COMM_WORLD, isnt_local, ns, &isnu_local);
-    ISCreateBlockIS(PETSC_COMM_WORLD, isnt_ghost, ns, &isnu_ghost);
-    ISCreateBlockIS(PETSC_COMM_WORLD, isnt_exten, ns, &isnu_exten);
+    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_ghost, ns, &isnu_ghost);
+    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_exten, ns, &isnu_exten);
     ISCreateBlockIS(PETSC_COMM_WORLD, isnt_separ, ns, &isnu_separ);
-    ISCreateBlockIS(PETSC_COMM_WORLD, isnt_local, ms, &ismu_local);
-    ISCreateBlockIS(PETSC_COMM_WORLD, isnt_ghost, ms, &ismu_ghost);
-    ISCreateBlockIS(PETSC_COMM_WORLD, isnt_exten, ms, &ismu_exten);
-    ISCreateBlockIS(PETSC_COMM_WORLD, isnt_separ, ms, &ismu_separ);
+    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_local, ms, &ismu_local);
+    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_ghost, ms, &ismu_ghost);
+    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_exten, ms, &ismu_exten);
+    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_separ, ms, &ismu_separ);
+    // // ISCreateBlockIS(PETSC_COMM_WORLD, ismt_full, ms, &ismu_full);
     ISToGeneral(isnu_local);
-    ISToGeneral(isnu_ghost);
-    ISToGeneral(isnu_exten);
+    // ISToGeneral(isnu_ghost);
+    // ISToGeneral(isnu_exten);
     ISToGeneral(isnu_separ);
-    ISToGeneral(ismu_local);
-    ISToGeneral(ismu_ghost);
-    ISToGeneral(ismu_exten);
-    ISToGeneral(ismu_separ);
-
-
-    /* Map NA indices to ghost and separator blocks */
-    if(verbose) printf("\tMapping NA observations...\n");
-    IS ismu_local_na, ismu_ghost_na, ismu_exten_na, ismu_separ_na;
-    ISLocalToGlobalMapping ltog_ismu_local, ltog_ismu_ghost, ltog_ismu_exten, ltog_ismu_separ;    
-    ISLocalToGlobalMappingCreateIS(ismu_local, &ltog_ismu_local);
-    ISLocalToGlobalMappingCreateIS(ismu_ghost, &ltog_ismu_ghost);
-    ISLocalToGlobalMappingCreateIS(ismu_exten, &ltog_ismu_exten);
-    ISLocalToGlobalMappingCreateIS(ismu_separ, &ltog_ismu_separ);
-    ISLocalToGlobalMappingSetType(ltog_ismu_local, ISLOCALTOGLOBALMAPPINGHASH);
-    ISLocalToGlobalMappingSetType(ltog_ismu_ghost, ISLOCALTOGLOBALMAPPINGHASH);
-    ISLocalToGlobalMappingSetType(ltog_ismu_exten, ISLOCALTOGLOBALMAPPINGHASH);
-    ISLocalToGlobalMappingSetType(ltog_ismu_separ, ISLOCALTOGLOBALMAPPINGHASH);
-    ISGlobalToLocalMappingApplyIS(ltog_ismu_local, IS_GTOLM_DROP, is_na, &ismu_local_na);
-    ISGlobalToLocalMappingApplyIS(ltog_ismu_ghost, IS_GTOLM_DROP, is_na, &ismu_ghost_na);
-    ISGlobalToLocalMappingApplyIS(ltog_ismu_exten, IS_GTOLM_DROP, is_na, &ismu_exten_na);
-    ISGlobalToLocalMappingApplyIS(ltog_ismu_separ, IS_GTOLM_DROP, is_na, &ismu_separ_na);
+    // ISToGeneral(ismu_local);
+    // ISToGeneral(ismu_ghost);
+    // ISToGeneral(ismu_exten);
+    // ISToGeneral(ismu_separ);
 
 
     /* Print problem dimensions */
@@ -228,14 +213,14 @@ int main(int argc, char **argv){
     MatMPIAIJKron(J0, K3, &Quu);
     MatMPIAIJKron(J1, K2, &Quu1);
     MatMPIAIJKron(J2, K1, &Quu2);
-    MatMPIAIJKron(At, As, &Au);
-    MatZeroRowsIS(Au, is_na, 0.0, NULL, NULL);
-    MatZeroRowsIS(Ab, is_na, 0.0, NULL, NULL);
+    MatMPIAIJKron(At, As, &Au);     
+    MatDiagonalScale(Au, NULL, qyy);    // Au^T * sqrt(Qyy)
+    MatDiagonalScale(Ab, qyy, NULL);    // Ab   * sqrt(Qyy)
     MatCreateDense(PETSC_COMM_WORLD, nb*last, nb*last, nb, nb, NULL, &Qbb);
     MatShift(Qbb, tau_b);
-    MatTransposeMatMult(Au, Au, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Quu3);
+    MatMatTransposeMult(Au, Au, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Quu3);
     MatTransposeMatMult(Ab, Ab, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Qbb1);
-    MatTransposeMatMult(Au, Ab, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Qub);
+    MatMatMult(Au, Ab, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Qub);
     MatAXPY(Quu, 1.0, Quu1, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Quu, 1.0, Quu2, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Quu, 1.0, Quu3, DIFFERENT_NONZERO_PATTERN);
@@ -248,16 +233,16 @@ int main(int argc, char **argv){
     MatCreateSubMatrixSeq(J0, isnt_exten, isnt_exten, &J0_exten);
     MatCreateSubMatrixSeq(J1, isnt_exten, isnt_exten, &J1_exten);
     MatCreateSubMatrixSeq(J2, isnt_exten, isnt_exten, &J2_exten);
-    MatCreateSubMatrixSeq(At, isnt_exten, isnt_exten, &At_exten);   // if At is not diagonal, then extract At[,ismt_exten] (costly?)
-                                                                    //  Ideally, keep At distributed according to ismt_local, then At^T * At will automatically collect the needed blocks
+    MatCreateSubMatrixSeq(At, isnt_exten, ismt_full, &At_exten);
+    
     Mat Au_exten;
     Mat Quu_exten, Quu1_exten, Quu2_exten, Quu3_exten;
     MatSeqAIJKron(J0_exten, K3, MAT_INITIAL_MATRIX, &Quu_exten);
     MatSeqAIJKron(J1_exten, K2, MAT_INITIAL_MATRIX, &Quu1_exten);
     MatSeqAIJKron(J2_exten, K1, MAT_INITIAL_MATRIX, &Quu2_exten);
     MatSeqAIJKron(At_exten, As, MAT_INITIAL_MATRIX, &Au_exten);
-    MatZeroRowsIS(Au_exten, ismu_exten_na, 0.0, NULL, NULL);        //  if At is not diagonal, can set At[is_na,] to zero
-    MatTransposeMatMult(Au_exten, Au_exten, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Quu3_exten);
+    MatDiagonalScale(Au_exten, NULL, qyy_seq);
+    MatMatTransposeMult(Au_exten, Au_exten, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Quu3_exten);
     MatAXPY(Quu_exten, 1.0, Quu1_exten, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Quu_exten, 1.0, Quu2_exten, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Quu_exten, 1.0, Quu3_exten, DIFFERENT_NONZERO_PATTERN);
@@ -269,7 +254,7 @@ int main(int argc, char **argv){
     MatCreateSubMatrixSeq(J0, isnt_exten, isnt_separ, &J0_separ);
     MatCreateSubMatrixSeq(J1, isnt_exten, isnt_separ, &J1_separ);
     MatCreateSubMatrixSeq(J2, isnt_exten, isnt_separ, &J2_separ);
-    MatCreateSubMatrixSeq(At, isnt_exten, isnt_separ, &At_separ);   // if At is not diagonal, then extract At[,ismt_separ]...
+    MatCreateSubMatrixSeq(At, isnt_separ, ismt_full, &At_separ);
 
     Mat Au_separ;
     Mat Quu_separ, Quu1_separ, Quu2_separ, Quu3_separ;
@@ -277,8 +262,7 @@ int main(int argc, char **argv){
     MatSeqAIJKron(J1_separ, K2, MAT_INITIAL_MATRIX, &Quu1_separ);
     MatSeqAIJKron(J2_separ, K1, MAT_INITIAL_MATRIX, &Quu2_separ);
     MatSeqAIJKron(At_separ, As, MAT_INITIAL_MATRIX, &Au_separ);
-    MatZeroRowsIS(Au_separ, ismu_separ_na, 0.0, NULL, NULL);        //  if At is not diagonal, can set At[is_na,] to zero
-    MatTransposeMatMult(Au_exten, Au_separ, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Quu3_separ);
+    MatMatTransposeMult(Au_exten, Au_separ, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Quu3_separ);
     MatAXPY(Quu_separ, 1.0, Quu1_separ, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Quu_separ, 1.0, Quu2_separ, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Quu_separ, 1.0, Quu3_separ, DIFFERENT_NONZERO_PATTERN);
@@ -391,11 +375,7 @@ int main(int argc, char **argv){
     InvShellPC* shell;
     KSP ksp_sampling;
     PC pc_sampling;
-        double tt0, tt1;
-        PetscTime(&tt0);
     KSPCreate(PETSC_COMM_WORLD, &ksp_sampling);
-        PetscTime(&tt1);
-        printf("\n\tTime spent on %i:\t\t%f sec\n", rank, tt1-tt0);
     KSPSetOperators(ksp_sampling, Quu, Quu);
     KSPSetTolerances(ksp_sampling, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetComputeEigenvalues(ksp_sampling, PETSC_TRUE);
@@ -424,7 +404,6 @@ int main(int argc, char **argv){
     KSPCreate(PETSC_COMM_SELF, &ksp_correction);
     KSPSetOperators(ksp_correction, Quu_exten, Quu_exten);
     KSPSetType(ksp_correction, KSPGMRES);
-        KSPSetPCSide(ksp_sampling, PC_SYMMETRIC);
     KSPGetPC(ksp_correction, &pc_correction);
     PCSetType(pc_correction, PCBJACOBI);
     PCSetFromOptions(pc_correction);
@@ -575,14 +554,14 @@ int main(int argc, char **argv){
     /* Solve the system */
     if(verbose) printf("\tSolving the system...\n");
     Vec bu, bb, cu, cb, meanu, meanb, mean_concat[2], mean;
-    MatZeroRowsIS(Ab, is_na, 0.0, x, y);
+    // MatZeroRowsIS(Ab, is_na, 0.0, x, y);
     VecDuplicate(d, &bu);
     VecDuplicate(s, &bb);
     VecDuplicate(d, &cu);
     VecDuplicate(s, &cb);
     VecDuplicate(d, &meanu);
     VecDuplicate(s, &meanb);
-    MatMultTranspose(Au, y, bu);
+    MatMult(Au, y, bu);
     MatMultTranspose(Ab, y, bb);
     MatMultTranspose(Qub, bu, cb);
     VecAXPY(bb, -1.0, cb);
@@ -602,26 +581,13 @@ int main(int argc, char **argv){
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
 
-        int nnn;
-        const char* reason;
-        double sumy;
-        VecSum(y, &sumy);
-        KSPGetIterationNumber(ksp_covariates, &nnn);
-        KSPGetConvergedReasonString(ksp_covariates, &reason);
-        if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\tSum of y:\t%f\n", reason, nnn, sumy);
-
-        if(profile) PetscTime(&t_start);
-        PCApplySymmetricLeft(pc_covariates, bu, meanu);
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tUsual PCApplyLeft:\t\t%f sec\n", t_end - t_start);
-        if(profile) PetscTime(&t_start);
-        PCApplySymmetricRight(pc_covariates, bu, meanu);
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tUsual PCApplyRight:\t\t%f sec\n", t_end - t_start);
-        if(profile) PetscTime(&t_start);
-        MatMult(Quu, bu, meanu);
-        if(profile) PetscTime(&t_end);
-        if(profile) printf("\n\tUsual MatMult:\t\t%f sec\n", t_end - t_start);
+        // int nnn;
+        // const char* reason;
+        // double sumy;
+        // VecSum(y, &sumy);
+        // KSPGetIterationNumber(ksp_covariates, &nnn);
+        // KSPGetConvergedReasonString(ksp_covariates, &reason);
+        // if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\tSum of y:\t%f\n", reason, nnn, sumy);
 
 
     /* ---------------------------------------------------------------- */
@@ -722,35 +688,33 @@ int main(int argc, char **argv){
 
     /* Destroy index sets */
     if(verbose) printf("\tDestroying index sets...\n");
-    ISDestroy(&is_na);
-
     ISDestroy(&isnt_local);
     ISDestroy(&isnt_ghost);
     ISDestroy(&isnt_exten);
     ISDestroy(&isnt_separ);
 
     ISDestroy(&isnu_local);
-    ISDestroy(&isnu_ghost);
-    ISDestroy(&isnu_exten);
+    // ISDestroy(&isnu_ghost);
+    // ISDestroy(&isnu_exten);
     ISDestroy(&isnu_separ);
 
-    ISDestroy(&ismu_local);
-    ISDestroy(&ismu_ghost);
-    ISDestroy(&ismu_exten);
-    ISDestroy(&ismu_separ);
+    // ISDestroy(&ismu_local);
+    // ISDestroy(&ismu_ghost);
+    // ISDestroy(&ismu_exten);
+    // ISDestroy(&ismu_separ);
 
-    ISDestroy(&ismu_local_na);
-    ISDestroy(&ismu_ghost_na);
-    ISDestroy(&ismu_exten_na);
-    ISDestroy(&ismu_separ_na);
+    // ISDestroy(&ismu_local_na);
+    // ISDestroy(&ismu_ghost_na);
+    // ISDestroy(&ismu_exten_na);
+    // ISDestroy(&ismu_separ_na);
 
     ISDestroy(&is_factor);
     ISDestroy(&isnu_local_local);
 
-    ISLocalToGlobalMappingDestroy(&ltog_ismu_local);
-    ISLocalToGlobalMappingDestroy(&ltog_ismu_ghost);
-    ISLocalToGlobalMappingDestroy(&ltog_ismu_exten);
-    ISLocalToGlobalMappingDestroy(&ltog_ismu_separ);
+    // ISLocalToGlobalMappingDestroy(&ltog_ismu_local);
+    // ISLocalToGlobalMappingDestroy(&ltog_ismu_ghost);
+    // ISLocalToGlobalMappingDestroy(&ltog_ismu_exten);
+    // ISLocalToGlobalMappingDestroy(&ltog_ismu_separ);
     ISLocalToGlobalMappingDestroy(&ltog_isnu_local);
 
 

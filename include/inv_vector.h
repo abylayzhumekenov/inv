@@ -27,7 +27,7 @@ PetscErrorCode VecCreateSubVector(Vec x, IS is, Vec* y);
 
 
 /**
- * @brief Create a sequential subvector defined by a local porion of an index set
+ * @brief Create a sequential subvector defined by a local portion of an index set
  * 
  * @param x 
  * @param is 
