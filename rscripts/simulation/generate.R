@@ -5,7 +5,7 @@ for(i in seq_along(args)){
 	if(args[i] == "-ms") m.s = as.integer(args[i+1])
 	if(args[i] == "-rt") range.t = as.integer(args[i+1])
 	if(args[i] == "-rs") range.t = as.integer(args[i+1])
-	if(args[i] == "-ss") sigma.sq = as.integer(args[i+1])
+	if(args[i] == "-sigma") sigma.st = as.integer(args[i+1])
 }
 
 # load libraries
@@ -78,17 +78,18 @@ nu.t = alpha.t - 1/2
 nu.s = alpha.s * nu.t
 
 # set practical range and marginal variance
-if(!exists(deparse(substitute(sigma.sq)))) sigma.sq = 1
+if(!exists(deparse(substitute(sigma.st)))) sigma.st = 1
 if(!exists(deparse(substitute(range.s)))) range.s = 1
 if(!exists(deparse(substitute(range.t)))) range.t = 1
-theta = log(c(sigma.sq, range.s, range.t))
+if(!exists(deparse(substitute(tau.y)))) tau.y = 1e-2
+if(!exists(deparse(substitute(tau.b)))) tau.b = 1e-5
 
 # convert hyperparameters
 c.1 = gamma(alpha.t-1/2) / gamma(alpha.t) / (4*pi)^(1/2)
 c.2 = gamma(alpha-d/2) / gamma(alpha) / (4*pi)^(d/2)
 gamma.s = sqrt(8*nu.s) / range.s
 gamma.t = range.t * gamma.s^alpha.s / sqrt(8*(alpha.t-1/2))
-gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.sq)
+gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.st^2)
 
 # ------------------------------------------------------------------------------
 # CREATE MESH, MATRICES AND DATA
@@ -120,62 +121,47 @@ K.3 = gamma.s^6 * fem.s$c0 + 3*gamma.s^4 * fem.s$g1 + 3*gamma.s^2 * fem.s$g2 + f
 n.t = m.t
 n.s = nrow(K.3)
 n.st = n.s * n.t
-n.b = 1
-n.sobs = n.s - 3
-n.obs = n.sobs * n.t
-n.na = 10
-tau_y = 1e-2
-tau_b = 1e-5
-
-# generate observation indices
-id.sobs = sort(sample(1:n.s, n.sobs))
-id.na = sort(sample(1:n.obs, n.na))
+n.b = 2
 
 # projection matrices
 A.t = inla.spde.make.A(mesh = mesh.t)
-A.s = inla.spde.make.A(mesh = mesh.s, loc = mesh.s$loc[id.sobs,])
+A.s = inla.spde.make.A(mesh = mesh.s, loc = mesh.s$loc)
 
 # fake observations
-y = rep(1:n.t, each = n.sobs)
-y[id.na] = NA
-A.b = Matrix(matrix(1, n.obs, 1), sparse = TRUE)
-A.b[id.na,] = NA
+y = rep(1:n.t, each = n.s)
+A.b = as(cbind(rep(1, n.st), rnorm(n.st)), "RsparseMatrix")
+q.yy = sqrt(tau.y) * rep(1, n.st)
 
 # save matrices
 path = "../../data/"
 write_petsc_mat(J.0*gamma.e^2, paste0(path,"J0"))
-write_petsc_mat(J.1*gamma.e^2*2*gamma.t, paste0(path,"J1"))
+write_petsc_mat(J.1*gamma.e^2*gamma.t, paste0(path,"J1"))
 write_petsc_mat(J.2*gamma.e^2*gamma.t^2, paste0(path,"J2"))
 write_petsc_mat(K.1, paste0(path,"K1"))
 write_petsc_mat(K.2, paste0(path,"K2"))
 write_petsc_mat(K.3, paste0(path,"K3"))
-write_petsc_mat(A.t*sqrt(tau_y), paste0(path,"At"))
-write_petsc_mat(A.s, paste0(path,"As"))
-write_petsc_mat(A.b*sqrt(tau_y), paste0(path,"Ab"))
-write_petsc_vec(y*sqrt(tau_y), paste0(path,"y"))
-write_petsc_is(id.na, paste0(path,"isna"))
+write_petsc_mat(t(A.t), paste0(path,"At"))
+write_petsc_mat(t(A.s), paste0(path,"As"))
+write_petsc_mat(A.b, paste0(path,"Ab"))
+write_petsc_vec(y, paste0(path,"y"))
+write_petsc_vec(q.yy, paste0(path,"qyy"))
 
 # # spatio-temporal precision
 # Q.st = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*2*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
 # 
 # # fixed effects precision
-# n.beta = 1
-# tau.beta = 1e-5
-# Q.beta = Diagonal(n.beta, tau.beta)
+# n.b = dim(A.b)[2]
+# Q.beta = Diagonal(n.b, tau.b)
 # 
 # # latent field prior precision
 # Q.prior = rbind(cbind(Q.st, sparseMatrix(NULL, NULL, dims = c(nrow(Q.st), nrow(Q.beta)))),
 #                 cbind(sparseMatrix(NULL, NULL, dims = c(nrow(Q.beta), nrow(Q.st))), Q.beta))
-# n.x = nrow(Q.prior)
 # 
 # # data matrices
-# Z = matrix(rnorm(n.st*n.beta), n.st, n.beta)
-# Z = matrix(1, n.st, n.beta)
-# B = Diagonal(n.st)
-# A = cbind(B, Z)
+# A.u = kronecker(A.t, A.s)
+# A = cbind(A.u, A.b)
 # 
 # # observation precision
-# tau.y = 1e-5
 # Q.y = Diagonal(n.st, tau.y)
 # 
 # # latent field posterior precision

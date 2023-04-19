@@ -262,6 +262,7 @@ int main(int argc, char **argv){
     MatSeqAIJKron(J1_separ, K2, MAT_INITIAL_MATRIX, &Quu1_separ);
     MatSeqAIJKron(J2_separ, K1, MAT_INITIAL_MATRIX, &Quu2_separ);
     MatSeqAIJKron(At_separ, As, MAT_INITIAL_MATRIX, &Au_separ);
+    MatDiagonalScale(Au_separ, NULL, qyy_seq);
     MatMatTransposeMult(Au_exten, Au_separ, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Quu3_separ);
     MatAXPY(Quu_separ, 1.0, Quu1_separ, DIFFERENT_NONZERO_PATTERN);
     MatAXPY(Quu_separ, 1.0, Quu2_separ, DIFFERENT_NONZERO_PATTERN);
@@ -415,11 +416,12 @@ int main(int argc, char **argv){
     if(verbose) printf("\tSetting up a covariates solver...\n");
     KSP ksp_covariates;
     PC pc_covariates;
+        // MatShift(Quu, 1.0);     //  BADLY conditioned... what to do?..
     KSPCreate(PETSC_COMM_WORLD, &ksp_covariates);
     KSPSetOperators(ksp_covariates, Quu, Quu);
     KSPSetType(ksp_covariates, KSPGMRES);
     KSPGetPC(ksp_covariates, &pc_covariates);
-    PCSetType(pc_covariates, PCBJACOBI);
+    PCSetType(pc_covariates, PCGAMG);
     PCSetFromOptions(pc_covariates);
     KSPSetTolerances(ksp_covariates, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, n_iter);
     KSPSetFromOptions(ksp_covariates);
@@ -501,11 +503,63 @@ int main(int argc, char **argv){
     Mat S, C, D;
     MatDuplicate(Qub, MAT_DO_NOT_COPY_VALUES, &C);
     KSPMatSolve(ksp_covariates, Qub, C);
+                // Vec q_vec, c_vec;
+                // double *c_array, *q_array, *cc_array, *qq_array;
+                // VecCreateMPI(PETSC_COMM_WORLD, nu_local, PETSC_DECIDE, &q_vec);
+                // VecDuplicate(q_vec, &c_vec);
+                // MatDenseGetArray(Qub, &q_array);
+                // MatDenseGetArray(C, &c_array);
+                // for(int i=0; i<nb; i++){
+                //     VecGetArray(q_vec, &qq_array);
+                //     for(int j=0; j<nu_local; j++){
+                //         qq_array[j] = q_array[j*nb+i];
+                //     }
+                //     // memcpy(qq_array, q_array + i*nu_local, nu_local*sizeof(double));
+                //     VecRestoreArray(q_vec, &qq_array);
+                //     KSPSolve(ksp_covariates, q_vec, c_vec);
+                //     VecGetArray(c_vec, &cc_array);
+                //     // memcpy(c_array + i*nu_local, cc_array, nu_local*sizeof(double));
+                //     for(int j=0; j<nu_local; j++){
+                //         c_array[j*nb+i] = cc_array[j];
+                //     }
+                //     VecRestoreArray(q_vec, &cc_array);
+                    
+                //     const char *reason;
+                //     double norm;
+                //     const double *hist;
+                //     int iter, nhist;
+                //     KSPGetConvergedReasonString(ksp_covariates, &reason);
+                //     KSPGetResidualNorm(ksp_covariates, &norm);
+                //     KSPGetIterationNumber(ksp_covariates, &iter);
+                //     KSPGetResidualHistory(ksp_covariates, &hist, &nhist);
+                //     if(!rank) printf("Converged reason: \t%s\n", reason);
+                //     if(!rank) printf("Residual norm: \t%f\n", norm);
+                //     if(!rank) printf("Iteration count: \t%i\n", iter);
+                //     if(!rank) printf("Residual history: \t%i\n", nhist);
+                //     for(int k=0; k<nhist; k++){ if(!rank) printf("\t\t%f\n", hist[k]); }
+                // }
+                // MatDenseRestoreArray(Qub, &q_array);
+                // MatDenseRestoreArray(C, &c_array);
+                // KSPView(ksp_covariates, PETSC_VIEWER_STDOUT_WORLD);
     MatTransposeMatMult(Qub, C, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &S);
     MatAYPX(S, -1.0, Qbb, SAME_NONZERO_PATTERN);
     MatDenseInvertLapack(S);
     MatMatMult(C, S, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D);
     MatDensePointwiseMult(D, C);
+
+        const char *reason;
+        double norm;
+        int iter;
+        KSPGetConvergedReasonString(ksp_covariates, &reason);
+        KSPGetResidualNorm(ksp_covariates, &norm);
+        KSPGetIterationNumber(ksp_covariates, &iter);
+        if(!rank) printf("Converged reason: \t%s\n", reason);
+        if(!rank) printf("Residual norm: \t%f\n", norm);
+        if(!rank) printf("Iteration count: \t%i\n", iter);
+        // MatGetValue(Qub, 1, 1, &norm);
+        // if(!rank) printf("Some value: \t%f\n", norm);
+        // MatNorm(C, NORM_1, &norm);
+        // if(!rank) printf("Another value: \t%f\n", norm);
 
 
     /* Compute the covariate correction */
@@ -554,21 +608,36 @@ int main(int argc, char **argv){
     /* Solve the system */
     if(verbose) printf("\tSolving the system...\n");
     Vec bu, bb, cu, cb, meanu, meanb, mean_concat[2], mean;
-    // MatZeroRowsIS(Ab, is_na, 0.0, x, y);
     VecDuplicate(d, &bu);
     VecDuplicate(s, &bb);
     VecDuplicate(d, &cu);
     VecDuplicate(s, &cb);
     VecDuplicate(d, &meanu);
     VecDuplicate(s, &meanb);
+    VecPointwiseMult(y, qyy, y);
     MatMult(Au, y, bu);
     MatMultTranspose(Ab, y, bb);
-    MatMultTranspose(Qub, bu, cb);
+    KSPSolve(ksp_covariates, bu, cu);
+    MatMultTranspose(Qub, cu, cb);
     VecAXPY(bb, -1.0, cb);
+        MatView(S, PETSC_VIEWER_STDOUT_WORLD);
     MatMult(S, bb, meanb);
     MatMult(Qub, meanb, cu);
     VecAXPY(bu, -1.0, cu);
     KSPSolve(ksp_covariates, bu, meanu);
+        
+
+        // VecNorm(bu, NORM_2, &norm);     // not correct, but why?? both Au and y are ok... smth wrong with cu?...
+        if(!rank) printf("Vector norm: \t%f\n", norm);
+        // const char *reason;
+        // double norm;
+        // int iter;
+        KSPGetConvergedReasonString(ksp_covariates, &reason);
+        KSPGetResidualNorm(ksp_covariates, &norm);
+        KSPGetIterationNumber(ksp_covariates, &iter);
+        if(!rank) printf("Converged reason: \t%s\n", reason);
+        if(!rank) printf("Residual norm: \t%f\n", norm);
+        if(!rank) printf("Iteration count: \t%i\n", iter);
     mean_concat[0] = meanu;
     mean_concat[1] = meanb;
     VecConcatenate(2, mean_concat, &mean, NULL);

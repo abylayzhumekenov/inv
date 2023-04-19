@@ -107,7 +107,7 @@ gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d) / sigma.sq)
 # ------------------------------------------------------------------------------
 
 # data matrices
-A.b = as(as.matrix(data[-(1:4)]) + .Machine$double.xmin, "RsparseMatrix")
+A.b = as(as.matrix(cbind(rep(1, m.s*m.t), data[-(1:4)])) + .Machine$double.xmin, "RsparseMatrix")
 y = data$y
 q.yy = sqrt(tau.y) * (!is.na(y))
 y[is.na(y)] = 0
@@ -137,7 +137,7 @@ A.s = inla.spde.make.A(mesh = mesh.s, loc = loc)
 # save matrices
 path = "../../data/"
 write_petsc_mat(J.0*gamma.e^2, paste0(path,"J0"))
-write_petsc_mat(J.1*gamma.e^2*2*gamma.t, paste0(path,"J1"))
+write_petsc_mat(J.1*gamma.e^2*gamma.t, paste0(path,"J1"))
 write_petsc_mat(J.2*gamma.e^2*gamma.t^2, paste0(path,"J2"))
 write_petsc_mat(K.1, paste0(path,"K1"))
 write_petsc_mat(K.2, paste0(path,"K2"))
