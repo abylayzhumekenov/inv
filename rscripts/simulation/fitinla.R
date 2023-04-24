@@ -30,10 +30,11 @@ source("generate.R")
 # run INLA
 data = data.frame(xcoord = rep(mesh.s$loc[,1], n.t),
                   ycoord = rep(mesh.s$loc[,2], n.t),
+                  zcoord = rep(mesh.s$loc[,3], n.t),
                   time = rep(1:n.t, each = n.s),
                   y = y, 
                   z = A.b[,2])
-model = ~ -1 + Intercept(1) + z + field(list(space = cbind(xcoord, ycoord), time = time), model = stmodel)
+model = ~ -1 + Intercept(1) + z + field(list(space = cbind(xcoord, ycoord, zcoord), time = time), model = stmodel)
 stmodel = stModel.define(mesh.s, mesh.t, "121",
                          control.priors = list(prs = c(range.s, 0),
                                                prt = c(range.t, 0),

@@ -36,10 +36,10 @@ source("fitinla.R")
 
 # compute the posterior precision
 A = cbind(kronecker(A.t, A.s), A.b)
-Q.posterior = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
-Q.posterior = rbind(cbind(Q.posterior, Matrix(matrix(0, n.st, n.b), sparse = TRUE)),
-                    cbind(Matrix(matrix(0, n.b, n.st), sparse = TRUE), Diagonal(n.b, tau.b)))
-Q.posterior = Q.posterior + crossprod(A, Diagonal(n.st, tau.y)) %*% A
+Q.prior = gamma.e^2 * (kronecker(J.0, K.3) + kronecker(J.1*gamma.t, K.2) + kronecker(J.2*gamma.t^2, K.1))
+Q.prior = rbind(cbind(Q.prior, Matrix(matrix(0, n.st, n.b), sparse = TRUE)),
+                cbind(Matrix(matrix(0, n.b, n.st), sparse = TRUE), Diagonal(n.b, tau.b)))
+Q.posterior = Q.prior + crossprod(A, Diagonal(n.st, tau.y)) %*% A
 
 # solve using R
 mu0 = drop(solve(Q.posterior, crossprod(A, Diagonal(n.st, tau.y)) %*% y))
@@ -67,4 +67,13 @@ plot(d1-d0, t="l")
 lines(d2-d0, col="gray")
 abline(h=0, lty=3)
 
+# plot projections?..
+coords.spherical = expand.grid(seq(0,2*pi,l=201)[-1], seq(0,pi,l=101)[-1])
+coords.cartesian = data.frame(x = sin(coords.spherical$Var2) * cos(coords.spherical$Var1),
+                              y = sin(coords.spherical$Var2) * sin(coords.spherical$Var1),
+                              z = cos(coords.spherical$Var2))
+A.spherical = inla.spde.make.A(mesh.s, as.matrix(coords.cartesian))
+mu.spherical = drop(A.spherical %*% result$summary.random$field$mode[1:n.s])
+mu.spherical = matrix(mu.spherical, 200)
+image(mu.spherical, col=viridis::viridis(100))
 

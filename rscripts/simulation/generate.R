@@ -82,7 +82,7 @@ if(!exists(deparse(substitute(sigma.st)))) sigma.st = 1
 if(!exists(deparse(substitute(range.s)))) range.s = 1
 if(!exists(deparse(substitute(range.t)))) range.t = 1
 if(!exists(deparse(substitute(tau.y)))) tau.y = 1e-2
-if(!exists(deparse(substitute(tau.b)))) tau.b = 1e-5
+if(!exists(deparse(substitute(tau.b)))) tau.b = 1e-3
 
 # convert hyperparameters
 c.1 = gamma(alpha.t-1/2) / gamma(alpha.t) / (4*pi)^(1/2)
