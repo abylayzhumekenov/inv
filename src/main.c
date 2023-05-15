@@ -38,11 +38,12 @@ int main(int argc, char **argv){
 
 
     /* Initialize MPI and PETSc */
-    int rank, size, last;
+    int rank, size, last, barrier;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     PetscInitialize(&argc, &argv, NULL, NULL);
+    barrier = profile;
     verbose = (!rank) && verbose;
     profile = verbose && profile ;
     last = (rank==size-1);
@@ -53,7 +54,7 @@ int main(int argc, char **argv){
     /* ---------------------------- INPUT ----------------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nINPUT\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -104,7 +105,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -115,7 +116,7 @@ int main(int argc, char **argv){
     /* ---------------------------- PARTITIONING ---------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nPARTITIONING\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -157,26 +158,10 @@ int main(int argc, char **argv){
     /* Compute the ghost and separator blocks */
     if(verbose) printf("\tComputing the ghost and separator blocks...\n");
     IS isnu_local, isnu_separ;
-    // IS isnu_ghost, isnu_exten;
-    // IS ismu_local, ismu_ghost, ismu_exten, ismu_separ;
-    // // IS ismu_full;
     ISCreateBlockIS(PETSC_COMM_WORLD, isnt_local, ns, &isnu_local);
-    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_ghost, ns, &isnu_ghost);
-    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_exten, ns, &isnu_exten);
     ISCreateBlockIS(PETSC_COMM_WORLD, isnt_separ, ns, &isnu_separ);
-    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_local, ms, &ismu_local);
-    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_ghost, ms, &ismu_ghost);
-    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_exten, ms, &ismu_exten);
-    // ISCreateBlockIS(PETSC_COMM_WORLD, isnt_separ, ms, &ismu_separ);
-    // // ISCreateBlockIS(PETSC_COMM_WORLD, ismt_full, ms, &ismu_full);
     ISToGeneral(isnu_local);
-    // ISToGeneral(isnu_ghost);
-    // ISToGeneral(isnu_exten);
     ISToGeneral(isnu_separ);
-    // ISToGeneral(ismu_local);
-    // ISToGeneral(ismu_ghost);
-    // ISToGeneral(ismu_exten);
-    // ISToGeneral(ismu_separ);
 
 
     /* Print problem dimensions */
@@ -188,7 +173,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -199,7 +184,7 @@ int main(int argc, char **argv){
     /* ---------------------------- ASSEMBLY -------------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nASSEMBLY\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -270,7 +255,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -281,7 +266,7 @@ int main(int argc, char **argv){
     /* ---------------------------- DIRECT SOLVE ---------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nDIRECT SOLVE\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -315,7 +300,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -366,7 +351,7 @@ int main(int argc, char **argv){
     /* ---------------------------- KSP SOLVERS ----------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nKSP SOLVERS\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -416,7 +401,6 @@ int main(int argc, char **argv){
     if(verbose) printf("\tSetting up a covariates solver...\n");
     KSP ksp_covariates;
     PC pc_covariates;
-        // MatShift(Quu, 1.0);     //  BADLY conditioned... what to do?..
     KSPCreate(PETSC_COMM_WORLD, &ksp_covariates);
     KSPSetOperators(ksp_covariates, Quu, Quu);
     KSPSetType(ksp_covariates, KSPGMRES);
@@ -428,7 +412,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -439,7 +423,7 @@ int main(int argc, char **argv){
     /* ---------------------------- SAMPLING CORRECTION --------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nSAMPLING CORRECTION\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -482,7 +466,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -493,7 +477,7 @@ int main(int argc, char **argv){
     /* ---------------------------- COVARIATE CORRECTION -------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nCOVARIATE CORRECTION\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -503,63 +487,11 @@ int main(int argc, char **argv){
     Mat S, C, D;
     MatDuplicate(Qub, MAT_DO_NOT_COPY_VALUES, &C);
     KSPMatSolve(ksp_covariates, Qub, C);
-                // Vec q_vec, c_vec;
-                // double *c_array, *q_array, *cc_array, *qq_array;
-                // VecCreateMPI(PETSC_COMM_WORLD, nu_local, PETSC_DECIDE, &q_vec);
-                // VecDuplicate(q_vec, &c_vec);
-                // MatDenseGetArray(Qub, &q_array);
-                // MatDenseGetArray(C, &c_array);
-                // for(int i=0; i<nb; i++){
-                //     VecGetArray(q_vec, &qq_array);
-                //     for(int j=0; j<nu_local; j++){
-                //         qq_array[j] = q_array[j*nb+i];
-                //     }
-                //     // memcpy(qq_array, q_array + i*nu_local, nu_local*sizeof(double));
-                //     VecRestoreArray(q_vec, &qq_array);
-                //     KSPSolve(ksp_covariates, q_vec, c_vec);
-                //     VecGetArray(c_vec, &cc_array);
-                //     // memcpy(c_array + i*nu_local, cc_array, nu_local*sizeof(double));
-                //     for(int j=0; j<nu_local; j++){
-                //         c_array[j*nb+i] = cc_array[j];
-                //     }
-                //     VecRestoreArray(q_vec, &cc_array);
-                    
-                //     const char *reason;
-                //     double norm;
-                //     const double *hist;
-                //     int iter, nhist;
-                //     KSPGetConvergedReasonString(ksp_covariates, &reason);
-                //     KSPGetResidualNorm(ksp_covariates, &norm);
-                //     KSPGetIterationNumber(ksp_covariates, &iter);
-                //     KSPGetResidualHistory(ksp_covariates, &hist, &nhist);
-                //     if(!rank) printf("Converged reason: \t%s\n", reason);
-                //     if(!rank) printf("Residual norm: \t%f\n", norm);
-                //     if(!rank) printf("Iteration count: \t%i\n", iter);
-                //     if(!rank) printf("Residual history: \t%i\n", nhist);
-                //     for(int k=0; k<nhist; k++){ if(!rank) printf("\t\t%f\n", hist[k]); }
-                // }
-                // MatDenseRestoreArray(Qub, &q_array);
-                // MatDenseRestoreArray(C, &c_array);
-                // KSPView(ksp_covariates, PETSC_VIEWER_STDOUT_WORLD);
     MatTransposeMatMult(Qub, C, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &S);
     MatAYPX(S, -1.0, Qbb, SAME_NONZERO_PATTERN);
     MatDenseInvertLapack(S);
     MatMatMult(C, S, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D);
     MatDensePointwiseMult(D, C);
-
-        const char *reason;
-        double norm;
-        int iter;
-        KSPGetConvergedReasonString(ksp_covariates, &reason);
-        KSPGetResidualNorm(ksp_covariates, &norm);
-        KSPGetIterationNumber(ksp_covariates, &iter);
-        if(!rank) printf("Converged reason: \t%s\n", reason);
-        if(!rank) printf("Residual norm: \t%f\n", norm);
-        if(!rank) printf("Iteration count: \t%i\n", iter);
-        // MatGetValue(Qub, 1, 1, &norm);
-        // if(!rank) printf("Some value: \t%f\n", norm);
-        // MatNorm(C, NORM_1, &norm);
-        // if(!rank) printf("Another value: \t%f\n", norm);
 
 
     /* Compute the covariate correction */
@@ -589,7 +521,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -600,7 +532,7 @@ int main(int argc, char **argv){
     /* ---------------------------- SOLVE FOR THE MEAN ---------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nSOLVE FOR THE MEAN\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -620,50 +552,28 @@ int main(int argc, char **argv){
     KSPSolve(ksp_covariates, bu, cu);
     MatMultTranspose(Qub, cu, cb);
     VecAXPY(bb, -1.0, cb);
-        MatView(S, PETSC_VIEWER_STDOUT_WORLD);
     MatMult(S, bb, meanb);
     MatMult(Qub, meanb, cu);
     VecAXPY(bu, -1.0, cu);
     KSPSolve(ksp_covariates, bu, meanu);
-        
-
-        // VecNorm(bu, NORM_2, &norm);     // not correct, but why?? both Au and y are ok... smth wrong with cu?...
-        if(!rank) printf("Vector norm: \t%f\n", norm);
-        // const char *reason;
-        // double norm;
-        // int iter;
-        KSPGetConvergedReasonString(ksp_covariates, &reason);
-        KSPGetResidualNorm(ksp_covariates, &norm);
-        KSPGetIterationNumber(ksp_covariates, &iter);
-        if(!rank) printf("Converged reason: \t%s\n", reason);
-        if(!rank) printf("Residual norm: \t%f\n", norm);
-        if(!rank) printf("Iteration count: \t%i\n", iter);
     mean_concat[0] = meanu;
     mean_concat[1] = meanb;
     VecConcatenate(2, mean_concat, &mean, NULL);
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
     if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
-
-        // int nnn;
-        // const char* reason;
-        // double sumy;
-        // VecSum(y, &sumy);
-        // KSPGetIterationNumber(ksp_covariates, &nnn);
-        // KSPGetConvergedReasonString(ksp_covariates, &reason);
-        // if(profile) printf("\t\tReason:\t%s\tIterations:\t%i\tSum of y:\t%f\n", reason, nnn, sumy);
 
 
     /* ---------------------------------------------------------------- */
     /* ---------------------------- CLEAN UP -------------------------- */
     /* ---------------------------------------------------------------- */
     if(verbose) printf("\nCLEAN UP\n");
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_start);
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
@@ -763,27 +673,11 @@ int main(int argc, char **argv){
     ISDestroy(&isnt_separ);
 
     ISDestroy(&isnu_local);
-    // ISDestroy(&isnu_ghost);
-    // ISDestroy(&isnu_exten);
     ISDestroy(&isnu_separ);
-
-    // ISDestroy(&ismu_local);
-    // ISDestroy(&ismu_ghost);
-    // ISDestroy(&ismu_exten);
-    // ISDestroy(&ismu_separ);
-
-    // ISDestroy(&ismu_local_na);
-    // ISDestroy(&ismu_ghost_na);
-    // ISDestroy(&ismu_exten_na);
-    // ISDestroy(&ismu_separ_na);
 
     ISDestroy(&is_factor);
     ISDestroy(&isnu_local_local);
 
-    // ISLocalToGlobalMappingDestroy(&ltog_ismu_local);
-    // ISLocalToGlobalMappingDestroy(&ltog_ismu_ghost);
-    // ISLocalToGlobalMappingDestroy(&ltog_ismu_exten);
-    // ISLocalToGlobalMappingDestroy(&ltog_ismu_separ);
     ISLocalToGlobalMappingDestroy(&ltog_isnu_local);
 
 
@@ -802,7 +696,7 @@ int main(int argc, char **argv){
 
 
     /* Profiling checkpoint */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
@@ -816,7 +710,7 @@ int main(int argc, char **argv){
 
 
     /* Final profiling */
-    MPI_Barrier(MPI_COMM_WORLD);
+    if(barrier) MPI_Barrier(MPI_COMM_WORLD);
     if(profile) PetscTime(&t_end);
     if(profile) PetscMallocGetCurrentUsage(&mem_end);
     if(profile) printf("\n\tTotal time:\t\t%f sec\n", t_end - t_init);
