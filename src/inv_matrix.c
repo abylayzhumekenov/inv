@@ -173,9 +173,10 @@ PetscErrorCode MatSeqAIJInvertPARDISO(Mat A, Mat* B, int verbose){
 
         /* Initialize PARDISO */
         if(verbose) printf("\tInitializing PARDISO...\n");
-        pardisoinit (pt, &mtype, &solver, iparm, dparm, &error);
+        omp_set_num_threads(1);
         var = getenv("OMP_NUM_THREADS");
         if(var != NULL) sscanf(var, "%d", &num_procs);
+        pardisoinit (pt, &mtype, &solver, iparm, dparm, &error);
         iparm[2]  = num_procs;
         maxfct = 1;		    /* Maximum number of numerical factorizations */
         mnum   = 1;         /* Which factorization to use */
@@ -209,6 +210,10 @@ PetscErrorCode MatSeqAIJInvertPARDISO(Mat A, Mat* B, int verbose){
         pardiso(pt, &maxfct, &mnum, &mtype, &phase, 
                 &n, val, ia, ja, &idum, &nrhs, iparm, 
                 &msglvl, NULL, NULL, &error, dparm);
+
+        // /* Convert back to 0-based C indexing (for freeing?) */
+        // for(int i=0; i<n+1; i++) ia[i] -= 1;
+        // for(int i=0; i<nnz; i++) ja[i] -= 1;
 
         /* Finalize PARDISO */
         if(verbose) printf("\tClean up...\n");

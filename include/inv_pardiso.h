@@ -7,6 +7,7 @@
 
 
 /* PARDISO prototype. */
+void omp_set_num_threads(int);
 void pardisoinit (void   *, int    *,   int *, int *, double *, int *);
 void pardiso     (void   *, int    *,   int *, int *,    int *, int *, 
                   double *, int    *,    int *, int *,   int *, int *,

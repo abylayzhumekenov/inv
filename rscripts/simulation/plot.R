@@ -51,6 +51,7 @@ t0 = Sys.time() - t0
 # solve using INLA
 mu1 = c(result$summary.random$field$mode, result$summary.fixed$mode)
 d1 = c(result$summary.random$field$sd^2, result$summary.fixed$sd^2)
+sd1 = sqrt(d1)
 
 # read PETSc solution
 mu2 = readBin("../../data/mu", "double", n.st+n.b+1, endian = "swap")[-1]
