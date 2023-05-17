@@ -68,3 +68,23 @@ PetscErrorCode MatDenseInvertLapack(Mat A);
  * @return PetscErrorCode 
  */
 PetscErrorCode MatDensePointwiseMult(Mat A, Mat B);
+
+
+/**
+ * @brief Compute selected elements of the inverse using MUMPS
+ * 
+ * @param A 
+ * @param B 
+ * @return PetscErrorCode 
+ */
+PetscErrorCode MatSeqAIJInvertMUMPS(Mat A, Mat* B, int verbose);
+
+
+/**
+ * @brief Compute selected elements of the inverse using PARDISO
+ * 
+ * @param A 
+ * @param B 
+ * @return PetscErrorCode 
+ */
+PetscErrorCode MatSeqAIJInvertPARDISO(Mat A, Mat* B, int verbose);

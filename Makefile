@@ -10,11 +10,10 @@ SRCS = $(wildcard $(SRC)/*.c)
 OBJS = $(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
 GMRES_DIR = $(PETSC_DIR)/src/ksp/ksp/impls/gmres/
-MATSBAIJ_DIR = $(PETSC_DIR)/src/mat/impls/sbaij/seq/
 
-CFLAGS = -g -Wall -I$(INC) -I$(PETSC_DIR)/include -I$(PETSC_DIR)$(PETSC_ARCH)/include -I$(GMRES_DIR) -I$(MATSBAIJ_DIR) -I$(PCG_DIR)/include
-LIBS_PATH = -L$(PETSC_DIR)$(PETSC_ARCH)/lib -L$(PCG_DIR)/src
-LIBS = -lm -lpetsc -llapack -lpcg_random
+CFLAGS = -g -Wall -I$(INC) -I$(PETSC_DIR)/include -I$(PETSC_DIR)$(PETSC_ARCH)/include -I$(GMRES_DIR) -I$(PCG_DIR)/include
+LIBS_PATH = -L$(PETSC_DIR)$(PETSC_ARCH)/lib -L$(PCG_DIR)/src -L$(PARDISO_DIR)
+LIBS = -lm -lpetsc -llapack -lpcg_random -lpardiso
 
 all: $(OBJS)
 	$(CC) $(CFLAGS) -o $(BIN)/$(EXE) $(OBJS) $(LIBS_PATH) $(LIBS)

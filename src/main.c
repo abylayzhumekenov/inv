@@ -17,7 +17,7 @@ int main(int argc, char **argv){
 
 
     /* Set parameters from the options */
-    int n_iter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, profile = 0;
+    int n_iter = 1000, n_sample = 100, n_neighbor = 1, verbose = 0, profile = 0, solver = 1;
     double tau_b = 1e-5;
     for(int i=0; i<argc; i++){
         if(!strcmp(argv[i], "-ns")){
@@ -30,6 +30,8 @@ int main(int argc, char **argv){
             verbose = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-p")){
             profile = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-ds")){
+            solver = atoi(argv[i+1]);
         } else if(!strcmp(argv[i], "-taub")){
             tau_b = atof(argv[i+1]);
         }
@@ -271,31 +273,11 @@ int main(int argc, char **argv){
     if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
 
-    /* Factor the extended matrix */
-    if(verbose) printf("\tFactoring the extended matrix...\n");
-    Mat L_exten;
-    IS is_factor;
-    MatSetOption(Quu_exten, MAT_SYMMETRIC, PETSC_TRUE);
-    MatGetOrdering(Quu_exten, MATORDERINGNATURAL, &is_factor, &is_factor);
-    MatGetFactor(Quu_exten, MATSOLVERMUMPS, MAT_FACTOR_CHOLESKY, &L_exten);
-    MatCholeskyFactorSymbolic(L_exten, Quu_exten, is_factor, NULL);
-    MatCholeskyFactorNumeric(L_exten, Quu_exten, NULL);
-
-
-    /* Selected inversion */
-    if(verbose) printf("\tSelected inversion...\n");
-    Vec d_exten;
     Mat D_exten;
+    Vec d_exten;
     VecCreateSeq(PETSC_COMM_SELF, nu_exten, &d_exten);
-    MatCreate(PETSC_COMM_SELF, &D_exten);
-    MatSetSizes(D_exten, nu_exten, nu_exten, PETSC_DETERMINE, PETSC_DETERMINE);
-    MatSetType(D_exten, MATSEQAIJ);
-    MatSetFromOptions(D_exten);
-    MatSetUp(D_exten);
-    for(int i=0; i<nu_exten; i++) MatSetValue(D_exten, i, i, 1.0, INSERT_VALUES);
-    MatAssemblyBegin(D_exten, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(D_exten, MAT_FINAL_ASSEMBLY);
-    MatMumpsGetInverseTranspose(L_exten, D_exten);
+    if(solver)  MatSeqAIJInvertPARDISO(Quu_exten, &D_exten, verbose);
+    else        MatSeqAIJInvertMUMPS(Quu_exten, &D_exten, verbose);
     MatGetDiagonal(D_exten, d_exten);
 
 
@@ -630,7 +612,6 @@ int main(int argc, char **argv){
     MatDestroy(&Quu2_separ);
     MatDestroy(&Quu3_separ);
 
-    MatDestroy(&L_exten);
     MatDestroy(&D_exten);
 
     MatDestroy(&S);
@@ -675,7 +656,6 @@ int main(int argc, char **argv){
     ISDestroy(&isnu_local);
     ISDestroy(&isnu_separ);
 
-    ISDestroy(&is_factor);
     ISDestroy(&isnu_local_local);
 
     ISLocalToGlobalMappingDestroy(&ltog_isnu_local);
