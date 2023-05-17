@@ -117,7 +117,7 @@ pdf("fig.sim.2.pdf", width=8, height=4)
 par(mfrow=c(1,1), mar=c(2,2,1,1))
 plot(abs(d2/d0-1)[t.idx], t="l", xlab=NA, ylab=NA, xaxt="n", yaxt="n")
 axis(1, at=seq(0,n.t,length=5), labels=seq(0,n.t,length=5)*c(1,1,NA,1,1))
-axis(2, at=seq(0,9e-4,length=2), labels=formatC(seq(0,9e-4,length=2), digits=0, format="e"))
+axis(2, at=seq(0,1e-4,length=2), labels=formatC(seq(0,1e-4,length=2), digits=0, format="e"))
 title(xlab="Time", ylab="Relative error", line=1)
 dev.off()
 
