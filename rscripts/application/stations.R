@@ -42,7 +42,7 @@ if(file.exists(
 
 ### deal with sp and projection
         coordinates(allstations) <- ~ longitude + latitude
-        allstations@proj4string <- CRS('+proj=longlat +datum=WGS84')
+        allstations@proj4string <- CRS('+proj=longlat +datum=WGS84 +lon_0=100')
 
         head(allstations)
 

@@ -1,57 +1,104 @@
-# fit the model
-m.s = 1000
-m.t = 365
-n.cores1 = 2
-n.cores2 = 6
-source("generate.R")
-source("fitinla.R")
-source("plotgif.R")
+# ------------------------------------------------------------------------------
+# ---------- LOAD THE RESULTS  -------------------------------------------------
+# ------------------------------------------------------------------------------
 
-# read results
-n.st = n.s * n.t
-n.b = dim(data)[2] - 3
-mu.inla = result$summary.random$field$mode
-d.inla = result$summary.random$field$sd^2
-sd.inla = sqrt(d.inla)
-mu.inv = readBin("../../data/mu", "double", 1+n.st+n.b, endian="swap")[-1][1:n.st]
-d.inv = readBin("../../data/d", "double", 1+n.st+n.b, endian="swap")[-1][1:n.st]
-sd.inv = sqrt(d.inv)
+# load the libraries
+suppressMessages(suppressWarnings(library(INLA)))
+library(ggplot2)
+library(maps)
+library(mapdata)
 
-# create a grid
-grid.ratio = diff(range(mesh.s$loc[,2])) / diff(range(mesh.s$loc[,1]))
-grid.nx = 1000
-grid.ny = round(grid.nx * grid.ratio)
-grid.x = seq(min(mesh.s$loc[,1]), max(mesh.s$loc[,1]), length = grid.nx)
-grid.y = seq(min(mesh.s$loc[,2]), max(mesh.s$loc[,2]), length = grid.ny)
+# load the data
+load("data/data.Rdata")
+load("data/theta.Rdata")
+load("data/result.Rdata")
+if(TRUE){           # rewrite?
+    mu.inv = readBin("../../data/mu", "double", n.s*n.t+n.b+1, endian = "swap")[-1]
+    d.inv = readBin("../../data/d", "double", n.s*n.t+n.b+1, endian = "swap")[-1]
+    sd.inv = sqrt(d.inv)
+    save(list = c("mu.inla", "sd.inla", "mu.inv", "sd.inv"), file = "data/result.Rdata")
+} else {
+    mu.inv = mu.inla
+    sd.inv = sd.inla
+}
+
+# ------------------------------------------------------------------------------
+# ---------- CREATE PROJECTIONS  -----------------------------------------------
+# ------------------------------------------------------------------------------
+
+# create a US border
+usa = map_data("usa")
+usa = usa[1:6886,]
+coordinates(usa) = ~ long + lat
+usa@proj4string = CRS("+proj=longlat +datum=WGS84 +lon_0=100")
+usa = spTransform(usa, CRS("+proj=moll +units=km"))
+borderline = usa@coords
+borderline[,1] = (borderline[,1]-min(bound$loc[,1])) / (diff(range(bound$loc[,1])))
+borderline[,2] = (borderline[,2]-min(bound$loc[,2])) / (diff(range(bound$loc[,2])))
+
+# create a projection
+grid.ratio = diff(range(bound$loc[,2])) / diff(range(bound$loc[,1]))
+grid.res = c(256, 256)
+grid.res[2] = round(grid.res[1] * grid.ratio)
+grid.x = seq(min(bound$loc[,1]), max(bound$loc[,1]), length = grid.res[1])
+grid.y = seq(min(bound$loc[,2]), max(bound$loc[,2]), length = grid.res[2])
 grid.loc = expand.grid(grid.x, grid.y)
 grid.loc = as.matrix(grid.loc)
 grid.A = inla.spde.make.A(mesh = mesh.s, loc = grid.loc)
 
-# project solutions
-t = 0
+# set the plot range
+zlim.mu = range(mu.inla[1:(n.s*n.t)], mu.inv[1:(n.s*n.t)])
+zlim.sd = range(sd.inla[1:(n.s*n.t)], sd.inv[1:(n.s*n.t)])
 
-grid.mu.inla = drop(grid.A %*% mu.inla[(1:n.s)+(n.s*t)])
-grid.mu.inla = matrix(grid.mu.inla, grid.nx)
-image(grid.mu.inla, asp = grid.ratio, col = viridis::viridis(100), zlim = range(mu.inla))
+# ------------------------------------------------------------------------------
+# ---------- PLOT THE RESULTS  -------------------------------------------------
+# ------------------------------------------------------------------------------
 
-grid.mu.inv = drop(grid.A %*% mu.inv[(1:n.s)+(n.s*t)])
-grid.mu.inv = matrix(grid.mu.inv, grid.nx)
-image(grid.mu.inv, asp = grid.ratio, col = viridis::viridis(100), zlim = range(mu.inv))
+# choose time points
+tt = round(seq(1,n.t,length=10))
 
-grid.sd.inla = drop(grid.A %*% sd.inv[(1:n.s)+(n.s*t)])
-grid.sd.inla = matrix(grid.sd.inla, grid.nx)
-image(grid.sd.inla, asp = grid.ratio, col = viridis::inferno(100), zlim = range(sd.inla))
+# plot several slices
+for(i in seq_along(tt)){
+    # set time
+    t = tt[i]
+    
+    # project the mean
+    mu.inla.grid = drop(grid.A %*% mu.inla[1:n.s + (t-1)*n.s])
+    mu.inla.grid = matrix(mu.inla.grid, grid.res[1])
+    mu.inv.grid = drop(grid.A %*% mu.inv[1:n.s + (t-1)*n.s])
+    mu.inv.grid = matrix(mu.inv.grid, grid.res[1])
+    
+    # project the sd
+    sd.inla.grid = drop(grid.A %*% sd.inla[1:n.s + (t-1)*n.s])
+    sd.inla.grid = matrix(sd.inla.grid, grid.res[1])
+    sd.inv.grid = drop(grid.A %*% sd.inv[1:n.s + (t-1)*n.s])
+    sd.inv.grid = matrix(sd.inv.grid, grid.res[1])
+    
+    # plot the spatial field
+    # png(paste0("img/fig.app.field.",i,".png"), width=1024, height=1024)
+    pdf(paste0("img/fig.app.field.",i,".pdf"), width=5, height=5)
+    par(mfrow=c(2,2), mar=c(3,3,1,1))
+    image(mu.inla.grid, col=viridis::viridis(100), zlim=zlim.mu, xaxt="n", yaxt="n")
+    lines(borderline, col="white", lwd=2)
+    title(ylab="Mean", line=1)
+    image(mu.inv.grid, col=viridis::viridis(100), zlim=zlim.mu, xaxt="n", yaxt="n")
+    lines(borderline, col="white", lwd=2)
+    image(sd.inla.grid, col=viridis::inferno(100), zlim=zlim.sd, xaxt="n", yaxt="n")
+    lines(borderline, col="white", lwd=2)
+    title(xlab="R-INLA", ylab="SD", line=1)
+    image(sd.inv.grid, col=viridis::inferno(100), zlim=zlim.sd, xaxt="n", yaxt="n")
+    lines(borderline, col="white", lwd=2)
+    title(xlab="Ovelapping RBMC", line=1)
+    dev.off()
+}
 
-grid.sd.inv = drop(grid.A %*% sd.inv[(1:n.s)+(n.s*t)])
-grid.sd.inv = matrix(grid.sd.inv, grid.nx)
-image(grid.sd.inv, asp = grid.ratio, col = viridis::inferno(100), zlim = range(sd.inv))
-
-# create gifs
-dirname = "img"
-width = 720
-height = 480
-plot.gif(mu.inla, bound, mesh.s, mesh.t, viridis::viridis(200), width, height, dirname, "mu_inla.gif")
-plot.gif(sd.inla, bound, mesh.s, mesh.t, viridis::inferno(200), width, height, dirname, "sd_inla.gif")
-plot.gif(mu.inv, bound, mesh.s, mesh.t, viridis::viridis(200), width, height, dirname, "mu_inv.gif")
-plot.gif(sd.inv, bound, mesh.s, mesh.t, viridis::inferno(200), width, height, dirname, "sd_inv.gif")
-
+# plot the temporal field
+pdf("img/fig.app.2.pdf", width=5, height=5)
+par(mfrow=c(1,1), mar=c(2,2,1,1))
+t.idx = (1:n.t-1)*n.s+111 # +111 = spatial point 111
+error = abs(sd.inv/sd.inla-1)[t.idx]
+plot(error, t="l", xlab=NA, ylab=NA, xaxt="n", yaxt="n", ylim=c(0,max(error)))
+axis(1, at=seq(0,n.t,length=5), labels=seq(0,n.t,length=5)*c(1,1,NA,1,1))
+axis(2, at=seq(0,max(error),length=2), labels=c(0, formatC(max(error), digits=2, format="e")))
+title(xlab="Time", ylab="Relative error", line=1)
+dev.off()

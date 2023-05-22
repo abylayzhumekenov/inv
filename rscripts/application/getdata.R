@@ -12,7 +12,7 @@ for(i in seq_along(args)){
 source("functions.R")
 
 if(!any(ls()=="dpath"))
-    dpath <- "../../data"
+    dpath <- "data"
 
 if(!any(ls()=='ndays'))
     ndays <- 365*12+3

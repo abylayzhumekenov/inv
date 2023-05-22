@@ -33,6 +33,8 @@ Compile by running `make` in the project directory. Compilation is the same on P
 * mumps (shipped with petsc)
 * metis (shipped with petsc)
 * pcg_random
+* openmp (pre-installed)
+* pardiso
 
 ## Run with options
 
@@ -45,6 +47,7 @@ Program options:
 * `-ns` number of samples
 * `-nn` number of neighbors
 * `-ni` max number of Krylov iterations
+* `-ds` direct solver (1 = PARDISO, 0 = MUMPS)
 * `-tauy` precision for observations
 * `-taub` precision for fixed effects
 * `-v` verbose
