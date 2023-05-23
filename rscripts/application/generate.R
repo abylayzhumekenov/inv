@@ -98,9 +98,9 @@ fem.t = inla.mesh.fem(mesh.t, order = 2)
 fem.s = inla.mesh.fem(mesh.s, order = 3)
 
 # temporal matrices
-J.0 = fem.t$c0
-J.1 = Diagonal(n.t, c(0.5, rep(0, n.t-2), 0.5))
-J.2 = fem.t$g1
+J.0 = gamma.e^2 * fem.t$c0
+J.1 = gamma.e^2 * gamma.t * Diagonal(n.t, c(0.5, rep(0, n.t-2), 0.5))
+J.2 = gamma.e^2 * gamma.t^2 * fem.t$g1
 
 # spatial matrices
 K.1 = gamma.s^2 * fem.s$c0 + fem.s$g1
@@ -120,9 +120,9 @@ q.yy = sqrt(tau.y) * (!y.na) # sqrt(Q.y)
 
 # save matrices
 path = "../../data/"
-write_petsc_mat(J.0 * gamma.e^2, paste0(path, "J0"))
-write_petsc_mat(J.1 * gamma.e^2 * gamma.t, paste0(path, "J1"))
-write_petsc_mat(J.2 * gamma.e^2 * gamma.t^2, paste0(path, "J2"))
+write_petsc_mat(J.0, paste0(path, "J0"))
+write_petsc_mat(J.1, paste0(path, "J1"))
+write_petsc_mat(J.2, paste0(path, "J2"))
 write_petsc_mat(K.1, paste0(path, "K1"))
 write_petsc_mat(K.2, paste0(path, "K2"))
 write_petsc_mat(K.3, paste0(path, "K3"))

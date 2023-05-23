@@ -48,7 +48,7 @@ zlim.sd = range(sd.inv[1:(n.s*n.t)])
 # ------------------------------------------------------------------------------
 
 # choose time points
-tt = c(1,2,3,4200,4201,4202)
+tt = c(1,2,4200,4201)
 
 pdf("img/fig.app.1.pdf", width=14, height=5)
 par(mfcol=c(2,length(tt)), mar=c(2,2,0,0))
@@ -67,10 +67,10 @@ for(i in seq_along(tt)){
     sd.inv.grid = matrix(sd.inv.grid, grid.res[1])
     
     # plot the spatial field
-    image(mu.inv.grid, col=viridis::viridis(100), asp=1, zlim=zlim.mu, xaxt="n", yaxt="n", axes=FALSE)
+    image(mu.inv.grid, col=viridis::viridis(100), asp=grid.ratio, zlim=zlim.mu, xaxt="n", yaxt="n", axes=FALSE)
     lines(borderline, col="white", lwd=2)
     if(i==1) title(ylab="Mean", line=1)
-    image(sd.inv.grid, col=viridis::inferno(100), asp=1, zlim=zlim.sd, xaxt="n", yaxt="n", axes=FALSE)
+    image(sd.inv.grid, col=viridis::inferno(100), asp=grid.ratio, zlim=zlim.sd, xaxt="n", yaxt="n", axes=FALSE)
     lines(borderline, col="white", lwd=2)
     if(i==1) title(ylab="SD", line=1)
     title(xlab=paste0("t = ", t), line = 1)
