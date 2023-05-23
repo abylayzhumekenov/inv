@@ -66,12 +66,19 @@ alpha = alpha.e + alpha.s * (alpha.t-1/2) # spatial order
 nu.t = alpha.t - 1/2
 nu.s = alpha.s * nu.t
 
+# approximation of {c.2 / gamma.s^(2*alpha-d)} for a unit sphere S^2
+csphere = function(gamma.s, alpha, k =50){
+    if(gamma.s < 0.5)      return(1/(4*pi*gamma.s^(2*alpha)))
+    else if(gamma.s < 2)    return(sum( (2*(0:k)+1) / (4*pi*(gamma.s^2+(0:k)*(0:k+1))^alpha) ))
+    else                    return(1/(4*pi*(alpha-1)*gamma.s^(2*alpha-2)))
+}
+
 # convert hyperparameters
 c.1 = gamma(alpha.t-1/2) / gamma(alpha.t) / (4*pi)^(1/2)
-c.2 = gamma(alpha-d.s/2) / gamma(alpha) / (4*pi)^(d.s/2)
 gamma.s = sqrt(8*nu.s) / r.s
 gamma.t = r.t * gamma.s^alpha.s / sqrt(8*(alpha.t-1/2))
-gamma.e = sqrt(c.1*c.2 / gamma.t / gamma.s^(2*alpha-d.s) / sig^2)
+c.s = csphere(gamma.s, alpha)
+gamma.e = sqrt(c.1*c.s / gamma.t / sig^2)
 
 # ------------------------------------------------------------------------------
 # ---------- GENERATE PRECISION MATRICES ---------------------------------------
@@ -128,9 +135,3 @@ cat(format(c("ns","nt","nu","ms","mt","mu","nb"), width=12, justify="right"), "\
     format(c("rs","rt","sig","tauy","taub"), width=12, justify="right"), "\n",
     format(c(r.s,r.t,sig,tau.y,tau.b), width=12, justify="right"), "\n",
     sep = "")
-
-# if(n.s*n.t < 1e4){
-#     QQ = kronecker(J.0*gamma.e^2, K.3) + kronecker(J.1*gamma.e^2*gamma.t, K.2) + kronecker(J.2*gamma.e^2*gamma.t^2, K.1)
-#     print(head(diag(QQ)))
-#     save(list = c("gamma.e", "gamma.t", "gamma.s"), file = "data/gamma.Rdata")
-# }

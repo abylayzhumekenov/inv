@@ -96,5 +96,3 @@ cat(format(c("ns","nt","nu","ms","mt","mu","nb"), width=12, justify="right"), "\
     format(names(result$cpu.used), width=12, justify="right"), "\n",
     format(result$cpu.used, width=12, justify="right"), "\n",
     sep = "")
-
-# print(head(diag(result$misc$configs$config[[1]]$Qprior)))
