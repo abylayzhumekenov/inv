@@ -289,20 +289,21 @@ int main(int argc, char **argv){
     if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
 
 
-        // /* ---------------------------------------------------------------- */
-        // /* ---------------------------- CHECK PURELY DIRECT SOLVE --------- */
-        // /* ---------------------------------------------------------------- */
-        // if(verbose) printf("\nCHECK PURELY DIRECT SOLVE\n");
-        // if(profile) PetscTime(&t_start);
-        // if(profile) PetscMallocGetCurrentUsage(&mem_start);
+        /* ---------------------------------------------------------------- */
+        /* ---------------------------- CHECK PURELY DIRECT SOLVE --------- */
+        /* ---------------------------------------------------------------- */
+        if(verbose) printf("\nCHECK PURELY DIRECT SOLVE\n");
+        if(barrier) MPI_Barrier(MPI_COMM_WORLD);
+        if(profile) PetscTime(&t_start);
+        if(profile) PetscMallocGetCurrentUsage(&mem_start);
 
-        // Mat LL;
-        // IS isis;
-        // MatSetOption(Quu, MAT_SYMMETRIC, PETSC_TRUE);
-        // MatGetOrdering(Quu, MATORDERINGNATURAL, &isis, &isis);
-        // MatGetFactor(Quu, MATSOLVERMUMPS, MAT_FACTOR_CHOLESKY, &LL);
-        // MatCholeskyFactorSymbolic(LL, Quu, isis, NULL);
-        // MatCholeskyFactorNumeric(LL, Quu, NULL);
+        Mat LL;
+        IS isis;
+        MatSetOption(Quu, MAT_SYMMETRIC, PETSC_TRUE);
+        MatGetOrdering(Quu, MATORDERINGNATURAL, &isis, &isis);
+        MatGetFactor(Quu, MATSOLVERMUMPS, MAT_FACTOR_CHOLESKY, &LL);
+        MatCholeskyFactorSymbolic(LL, Quu, isis, NULL);
+        MatCholeskyFactorNumeric(LL, Quu, NULL);
 
         // /* Selected inversion */
         // if(verbose) printf("\tSelected inversion...\n");
@@ -322,11 +323,12 @@ int main(int argc, char **argv){
         // MatMumpsGetInverseTranspose(LL, DD);
         // MatGetDiagonal(DD, dd);
 
-        // /* Profiling checkpoint */
-        // if(profile) PetscTime(&t_end);
-        // if(profile) PetscMallocGetCurrentUsage(&mem_end);
-        // if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
-        // if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
+        /* Profiling checkpoint */
+        if(barrier) MPI_Barrier(MPI_COMM_WORLD);
+        if(profile) PetscTime(&t_end);
+        if(profile) PetscMallocGetCurrentUsage(&mem_end);
+        if(profile) printf("\n\tTime spent:\t\t%f sec\n", t_end - t_start);
+        if(profile) printf("\tMemory allocated:\t%i bytes\n", (int)(mem_end - mem_start));
 
 
     /* ---------------------------------------------------------------- */
