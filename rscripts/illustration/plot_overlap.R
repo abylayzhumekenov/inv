@@ -1,4 +1,4 @@
-pdf("img/fig.var.2.pdf", width=10, height=5)
+pdf("img/fig.var.3.pdf", width=10, height=5)
 par(mfrow=c(1,2), mar=c(1,1,1,1))
 
 # plot(0, col=NA, xlim=c(0,11), ylim=c(0,11), asp=1, xlab=NA, ylab=NA, axes=FALSE)
