@@ -15,7 +15,7 @@ samples = 10^(1:3)
 cols = hcl.colors(3, rev=TRUE)
 cols_ = hcl.colors(3, rev=TRUE, alpha=0.5)
 
-pdf("img/fig.var.1.pdf", width = 14, height = 5)
+pdf("img/fig.var.4.pdf", width = 14, height = 5)
 par(mfrow=c(1,2), mar=c(3,3,1,1))
 
 # plot 1
