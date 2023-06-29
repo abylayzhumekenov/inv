@@ -187,8 +187,8 @@ PetscErrorCode MatSeqAIJInvertPARDISO(Mat A, Mat* B, int verbose){
         for(int i=0; i<n+1; i++) ia[i] += 1;
         for(int i=0; i<nnz; i++) ja[i] += 1;
 
-        /* Reordering and symbolic factorization.  */
-        /* This step also allocates all memory that is necessary for the factorization. */
+        /* Reordering and symbolic factorization */
+        /* This step also allocates all memory that is necessary for the factorization */
         if(verbose) printf("\tSymbolic factorization...\n");
         phase = 11;
         pardiso(pt, &maxfct, &mnum, &mtype, &phase, 
@@ -211,9 +211,9 @@ PetscErrorCode MatSeqAIJInvertPARDISO(Mat A, Mat* B, int verbose){
                 &n, val, ia, ja, &idum, &nrhs, iparm, 
                 &msglvl, NULL, NULL, &error, dparm);
 
-        // /* Convert back to 0-based C indexing (for freeing?) */
-        // for(int i=0; i<n+1; i++) ia[i] -= 1;
-        // for(int i=0; i<nnz; i++) ja[i] -= 1;
+        /* Convert back to 0-based C indexing (for freeing?) */
+        for(int i=0; i<n+1; i++) ia[i] -= 1;
+        for(int i=0; i<nnz; i++) ja[i] -= 1;
 
         /* Finalize PARDISO */
         if(verbose) printf("\tClean up...\n");
